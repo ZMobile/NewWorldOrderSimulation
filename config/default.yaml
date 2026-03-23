@@ -1,0 +1,62 @@
+world:
+  seed: 42
+  width: 100
+  height: 100
+  resourceDensity: 0.3
+  terrainNoise:
+    octaves: 6
+    persistence: 0.5
+
+agents:
+  count: 200
+  archetypeDistribution:
+    OPTIMIZER: 0.10
+    ENTREPRENEUR: 0.12
+    COOPERATOR: 0.15
+    FREE_RIDER: 0.08
+    REGULATOR: 0.05
+    INNOVATOR: 0.08
+    ACCUMULATOR: 0.07
+    EXPLOITER: 0.05
+    ARTISAN: 0.12
+    POLITICIAN: 0.05
+    PHILANTHROPIST: 0.05
+    AUTOMATOR: 0.08
+  perceptionRadius: 7
+
+robots:
+  initialCost: 10000
+  costDecayRate: 0.05
+  initialEfficiency: 1.2
+  efficiencyGrowthRate: 0.03
+
+meas:
+  enabled: true
+  formulaVersion: "v0.1.0"
+  ubiEnabled: true
+  ubiAdequacyTarget: 0.85
+  baseTransactionTax: 0.005
+
+llm:
+  provider: "anthropic"
+  apiKey: ""  # Set here or via ANTHROPIC_API_KEY env var
+  apiBaseUrl: "https://api.anthropic.com"
+  agentModel: "claude-sonnet-4-20250514"
+  complexModel: "claude-opus-4-6"
+  gameMasterModel: "claude-opus-4-6"
+  maxAgentCallsPerTick: 50
+  maxGameMasterCallsPerTick: 20
+  totalBudgetUsd: 100.0
+  cacheEnabled: true
+  cacheTtlTicks: 5
+
+simulation:
+  ticksPerYear: 12
+  totalYears: 10
+  snapshotInterval: 12
+  metricsInterval: 1
+
+events:
+  resourceDiscoveryProbability: 0.02
+  techBreakthroughProbability: 0.01
+  environmentalCrisisThreshold: 0.3

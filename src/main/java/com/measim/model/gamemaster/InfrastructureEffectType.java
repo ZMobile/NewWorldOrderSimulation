@@ -1,0 +1,10 @@
+package com.measim.model.gamemaster;
+
+public enum InfrastructureEffectType {
+    TRADE_COST_REDUCTION,
+    POLLUTION_REDUCTION,
+    ROBOT_EFFICIENCY_BOOST,
+    PRODUCTION_SPEED_BOOST,
+    ENVIRONMENTAL_REMEDIATION,
+    RESOURCE_EXTRACTION_IMPROVEMENT
+}
