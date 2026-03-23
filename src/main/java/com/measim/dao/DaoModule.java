@@ -19,5 +19,6 @@ public class DaoModule extends AbstractModule {
         bind(InfrastructureDao.class).to(InfrastructureDaoImpl.class).in(Singleton.class);
         bind(CommunicationDao.class).to(CommunicationDaoImpl.class).in(Singleton.class);
         bind(RiskDao.class).to(RiskDaoImpl.class).in(Singleton.class);
+        bind(ExternalityDao.class).to(ExternalityDaoImpl.class).in(Singleton.class);
     }
 }

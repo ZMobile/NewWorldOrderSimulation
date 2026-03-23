@@ -7,6 +7,7 @@ import com.measim.dao.DaoModule;
 import com.measim.service.agent.*;
 import com.measim.service.communication.*;
 import com.measim.service.economy.*;
+import com.measim.service.externality.*;
 import com.measim.service.gamemaster.*;
 import com.measim.service.comparison.*;
 import com.measim.service.governance.*;
@@ -56,6 +57,9 @@ public class ServiceModule extends AbstractModule {
 
         // Risk services
         bind(RiskService.class).to(RiskServiceImpl.class).in(Singleton.class);
+
+        // Externality services
+        bind(ExternalityService.class).to(ExternalityServiceImpl.class).in(Singleton.class);
 
         // Governance services
         bind(GovernanceService.class).to(GovernanceServiceImpl.class).in(Singleton.class);

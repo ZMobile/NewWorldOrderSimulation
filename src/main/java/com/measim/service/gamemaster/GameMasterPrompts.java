@@ -30,7 +30,7 @@ public final class GameMasterPrompts {
                 ALSO: Every discovery has risks. Set a risk profile — what could go wrong with
                 this new technology? Include evolution parameters for how risk changes over time.
 
-                If succeeds: {"success": true, "name": "...", "description": "...", "category": 1-4, "inputs": [...], "outputs": [...], "pollutionOutput": N.N, "productionTimeTicks": N, "prerequisiteTechs": [...], "effectType": null or "...", "effectMagnitude": null or N.N, "risks": [{"name":"...","description":"...","category":"TECHNOLOGICAL|ENVIRONMENTAL|...","baseProbability":0.01,"agingRate":0.02,"minSeverity":0.1,"maxSeverity":0.5,"canCascade":false}]}
+                If succeeds: {"success": true, "name": "...", "description": "...", "category": 1-4, "inputs": [...], "outputs": [...], "pollutionOutput": N.N, "productionTimeTicks": N, "prerequisiteTechs": [...], "effectType": null or "...", "effectMagnitude": null or N.N, "risks": [{"name":"...","category":"TECHNOLOGICAL|ENVIRONMENTAL|...","baseProbability":0.01,"agingRate":0.02,"minSeverity":0.1,"maxSeverity":0.5,"canCascade":false}], "byproducts": [{"name":"...","type":"AIR_POLLUTION|WATER_CONTAMINATION|CHEMICAL|...","visibility":"VISIBLE|DELAYED|HIDDEN|CUMULATIVE","baseAmountPerTick":0.01,"diffusionRadius":2,"accumulationRate":0.5}]}
                 If fails: {"success": false, "reason": "..."}
                 Only output JSON.
                 """;
@@ -277,6 +277,9 @@ public final class GameMasterPrompts {
                   ],
                   "risks": [
                     {"name":"Risk name","description":"What could go wrong","category":"STRUCTURAL|ENVIRONMENTAL|ECONOMIC|OPERATIONAL|CATASTROPHIC","baseProbability":0.01,"agingRate":0.02,"usageSensitivity":0.3,"maintenanceSensitivity":0.5,"environmentSensitivity":0.3,"minSeverity":0.1,"maxSeverity":0.5,"canCascade":false,"cascadeRadius":0}
+                  ],
+                  "byproducts": [
+                    {"name":"Byproduct name","description":"What externality this produces","type":"AIR_POLLUTION|WATER_CONTAMINATION|SOIL_DEGRADATION|NOISE|WASTE|RADIATION|CHEMICAL|THERMAL|ECOLOGICAL|SOCIAL|CUSTOM","visibility":"VISIBLE|DELAYED|HIDDEN|CUMULATIVE","baseAmountPerTick":0.01,"agingRate":0.02,"diffusionRadius":1-5,"accumulationRate":0.0-1.0}
                   ]
                 }
                 If not feasible:

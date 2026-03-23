@@ -198,8 +198,8 @@ com.measim
 │   ├── event/            EventBus
 │   └── config/           SimulationConfig (YAML)
 ├── dao/                  Data access (interface + impl, Guice-injected)
-│   11 DAOs: World, Agent, Market, Audit, ProductionChain, Metrics,
-│   LLM, TechnologyRegistry, Government, Infrastructure, Communication, Risk
+│   13 DAOs: World, Agent, Market, Audit, ProductionChain, Metrics, LLM,
+│   TechnologyRegistry, Government, Infrastructure, Communication, Risk, Externality
 ├── service/              Business logic (interface + impl)
 │   ├── world/            Generation, Environment, Pathfinding
 │   ├── economy/          Production, CreditFlow (realistic: no fake credit injection)
@@ -210,6 +210,7 @@ com.measim
 │   ├── governance/       Voting, judicial disputes, migration
 │   ├── infrastructure/   Build validation, resource flow, maintenance, GM-dynamic types
 │   ├── risk/             Evolution model evaluation, cascade propagation, consequence application
+│   ├── externality/      Byproduct processing, true vs measured vs perceived pollution
 │   ├── communication/    Agent-to-agent, agent-to-GM, observable thought logging
 │   ├── simulation/       Tick loop (11 phases via Guice Multibinder)
 │   ├── metrics/          Gini, satisfaction, CSV export
@@ -246,6 +247,19 @@ The gap between perceived and true risk drives behavior: overconfident agents ta
 P(tick) = base × age(t) × usage(intensity) × maintenance(gap) × environment(health) × neighbor(load)
 ```
 Zero LLM calls for probability. GM only called when a risk triggers (to adjudicate specific consequences).
+
+### The Externality System
+
+Byproducts/externalities are a separate system from risk (risk = what could go wrong; externalities = what IS being produced, often invisibly).
+
+**Three layers of knowledge:**
+1. **True byproducts** — what actually happens. Applied to tiles/environment. Some are visible (smoke), some are hidden (groundwater contamination), some are cumulative (microplastics).
+2. **Measured byproducts** — what the measurement system can detect. This is what feeds into EF scoring. Hidden byproducts may go unmeasured for years.
+3. **Perceived byproducts** — what agents think. They may not know about hidden externalities until consequences emerge.
+
+The gap between true and measured is where the system can be gamed — an Exploiter might produce hidden pollution that doesn't affect their EF score. Until the accumulated damage crosses a detection threshold or causes visible consequences (crop failures, health impacts), they get away with it. This is realistic: it's exactly how real environmental regulation works.
+
+Byproduct types: air pollution, water contamination, soil degradation, noise, waste, radiation, chemical, thermal, ecological, social, custom (GM-defined). Each has a visibility class, evolution model, diffusion radius, and accumulation rate.
 
 ### Tick Loop (11 Phases)
 
