@@ -261,6 +261,27 @@ The gap between true and measured is where the system can be gamed — an Exploi
 
 Byproduct types: air pollution, water contamination, soil degradation, noise, waste, radiation, chemical, thermal, ecological, social, custom (GM-defined). Each has a visibility class, evolution model, diffusion radius, and accumulation rate.
 
+### Agent-Created Services
+
+Services are first-class entities — not hardcoded, not predefined. Agents create them:
+
+- An **Accumulator** proposes "I want to offer lending — agents deposit credits, I lend at interest" → GM evaluates → bank exists
+- An **Entrepreneur** proposes "Logistics service using my trade road infrastructure" → GM evaluates → shipping company
+- A **Cooperator** proposes "Mutual insurance pool — members contribute, payouts on risk events" → GM evaluates → insurance co-op
+- An **Innovator** proposes "Training academy — improves agents' skill scores" → GM evaluates → education service
+
+This means **banking, insurance, logistics, education, and even governance services all emerge from agent creativity** rather than being hardcoded system features. The competitive market applies to services just like it does to physical goods.
+
+Each service has:
+- GM-set properties (setup cost, operating cost, price, capacity, quality)
+- Effects on consumers (credit lending, satisfaction boost, skill improvement, risk reduction)
+- Risk profiles (bank run, malpractice, insolvency)
+- Byproduct profiles (data collection, social displacement)
+- Reputation that builds with successful use and decays without maintenance
+- Infrastructure dependencies (a logistics service needs roads)
+
+Service categories: financial, logistics, healthcare, education, legal, security, information, entertainment, maintenance, governance, custom.
+
 ### Tick Loop (11 Phases)
 
 | # | Phase | LLM? | What Happens |
@@ -331,9 +352,10 @@ All core systems built and compiling (BUILD SUCCESSFUL, 35 tests):
 - **Game Master**: Full DM — research, infrastructure evaluation (agent proposes/GM evaluates), novel actions for all archetypes, spontaneous world events, yearly coherence audits. All reasoning observable.
 - **Infrastructure**: GM-dynamic types (no fixed catalog), resource flow across tiles, maintenance/degradation, terrain capacity constraints, stacking diminishing returns
 - **Risk System**: Universal (all entity types), evolution model with GM-set parameters, true vs perceived risk, cascading effects, probability evolves with age/usage/maintenance/environment/neighbors
+- **Externalities**: Universal byproduct system with true/measured/perceived pollution layers. Hidden externalities go undetected until consequences emerge. Feeds into EF scoring.
+- **Services**: Agent-created services (banking, logistics, insurance, education, etc.) — not hardcoded. GM evaluates proposals, sets properties. Competitive service market with reputation system.
 - **Communication**: Observable message log — agent-to-agent, agent-to-GM, GM internal reasoning, multi-turn conversations
 - **Governance**: Multi-government, voting lifecycle, judicial disputes, agent migration
-- **Infrastructure**: Pipelines, trade routes, facilities — all dynamically created by GM
 - **Metrics/Output**: Gini, satisfaction, env health — CSV export, JSON snapshots, comparison framework
 - **Visualization**: JavaFX hex renderer, dashboard charts, inspector panel
 

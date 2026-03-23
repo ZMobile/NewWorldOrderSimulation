@@ -5,6 +5,7 @@ import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.measim.dao.DaoModule;
 import com.measim.service.agent.*;
+import com.measim.service.agentservice.*;
 import com.measim.service.communication.*;
 import com.measim.service.economy.*;
 import com.measim.service.externality.*;
@@ -60,6 +61,9 @@ public class ServiceModule extends AbstractModule {
 
         // Externality services
         bind(ExternalityService.class).to(ExternalityServiceImpl.class).in(Singleton.class);
+
+        // Agent service manager (agent-created services: banking, logistics, etc.)
+        bind(AgentServiceManager.class).to(AgentServiceManagerImpl.class).in(Singleton.class);
 
         // Governance services
         bind(GovernanceService.class).to(GovernanceServiceImpl.class).in(Singleton.class);

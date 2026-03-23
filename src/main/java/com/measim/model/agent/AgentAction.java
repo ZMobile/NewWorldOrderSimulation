@@ -18,4 +18,6 @@ public sealed interface AgentAction {
     record Migrate(String targetGovernmentId) implements AgentAction {}
     record ExtractResource(HexCoord tile, ItemType resourceType, double amount) implements AgentAction {}
     record BuildInfrastructure(String typeId, HexCoord location, HexCoord connectTo) implements AgentAction {}
+    record CreateService(String name, String description, String category, HexCoord location, double budget) implements AgentAction {}
+    record ConsumeService(String serviceInstanceId) implements AgentAction {}
 }

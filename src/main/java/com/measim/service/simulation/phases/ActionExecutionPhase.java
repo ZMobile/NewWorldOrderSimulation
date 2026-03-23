@@ -6,6 +6,8 @@ import com.measim.model.config.SimulationConfig;
 import com.measim.model.economy.*;
 import com.measim.model.gamemaster.NovelAction;
 import com.measim.model.world.*;
+import com.measim.model.service.ServiceProposal;
+import com.measim.service.agentservice.AgentServiceManager;
 import com.measim.service.economy.ProductionService;
 import com.measim.service.gamemaster.GameMasterService;
 import com.measim.service.infrastructure.InfrastructureService;
@@ -44,6 +46,7 @@ public class ActionExecutionPhase implements TickPhase {
     private final EnvironmentService environmentService;
     private final GameMasterService gameMasterService;
     private final InfrastructureService infrastructureService;
+    private final AgentServiceManager agentServiceManager;
     private final SimulationConfig config;
 
     @Inject
@@ -51,7 +54,7 @@ public class ActionExecutionPhase implements TickPhase {
                                  MarketDao marketDao, ProductionChainDao chainDao,
                                  ProductionService productionService, EnvironmentService environmentService,
                                  GameMasterService gameMasterService, InfrastructureService infrastructureService,
-                                 SimulationConfig config) {
+                                 AgentServiceManager agentServiceManager, SimulationConfig config) {
         this.decisionPhase = decisionPhase;
         this.agentDao = agentDao;
         this.worldDao = worldDao;
@@ -61,6 +64,7 @@ public class ActionExecutionPhase implements TickPhase {
         this.environmentService = environmentService;
         this.gameMasterService = gameMasterService;
         this.infrastructureService = infrastructureService;
+        this.agentServiceManager = agentServiceManager;
         this.config = config;
     }
 
@@ -350,6 +354,15 @@ public class ActionExecutionPhase implements TickPhase {
                                 0.8, null, -result.infrastructure().type().constructionCost()));
                     }
                 }
+            }
+            case AgentAction.CreateService cs -> {
+                var proposal = new ServiceProposal(agent.id(), cs.name(), cs.description(),
+                        cs.category(), "All agents in range", "Market rate",
+                        "Credits and time", cs.location(), cs.budget());
+                agentServiceManager.proposeService(proposal, currentTick);
+            }
+            case AgentAction.ConsumeService consume -> {
+                agentServiceManager.consumeService(agent.id(), consume.serviceInstanceId(), currentTick);
             }
             case AgentAction.ExtractResource ignored -> {}
             case AgentAction.Produce ignored -> {}
