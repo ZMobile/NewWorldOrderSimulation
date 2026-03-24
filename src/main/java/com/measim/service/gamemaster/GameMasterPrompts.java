@@ -92,12 +92,15 @@ public final class GameMasterPrompts {
                 """;
     }
 
-    public static String novelActionUserPrompt(NovelAction action, WorldState worldState) {
+    public static String novelActionUserPrompt(NovelAction action, WorldState worldState,
+                                                String agentExperience) {
         return """
                 Agent: %s (archetype: %s)
                 Action type: %s
                 Description: %s
                 Credit stake: %.0f
+                Agent experience: %s
+                (More experience in relevant domain = better outcomes, lower risk)
                 Current world year: %d
 
                 World context:
@@ -112,6 +115,7 @@ public final class GameMasterPrompts {
                 action.agentId(), action.archetypeName(),
                 action.type(), action.description(),
                 action.creditStake(),
+                agentExperience,
                 worldState.currentTick() / worldState.ticksPerYear(),
                 worldState.averageEnvironmentalHealth(),
                 worldState.giniCoefficient(),
@@ -285,7 +289,8 @@ public final class GameMasterPrompts {
                                                        List<TechNode> techTree,
                                                        List<InfrastructureType> existingInfra,
                                                        String terrainAtLocation,
-                                                       String terrainAtConnection) {
+                                                       String terrainAtConnection,
+                                                       String agentExperience) {
         StringBuilder sb = new StringBuilder();
         sb.append("Agent's infrastructure proposal:\n");
         sb.append("  Name: ").append(proposal.proposedName()).append("\n");
@@ -298,6 +303,8 @@ public final class GameMasterPrompts {
             sb.append("  Connection target terrain: ").append(terrainAtConnection).append("\n");
             sb.append("  Distance: ").append(proposal.location().distanceTo(proposal.connectTo())).append(" hexes\n");
         }
+        sb.append("\nAgent experience: ").append(agentExperience).append("\n");
+        sb.append("(More experience in infrastructure = better quality, lower risk, lower cost)\n");
         sb.append("\nAvailable technology: ");
         for (TechNode node : techTree) sb.append(node.name()).append(", ");
         sb.append("\n\nExisting infrastructure in world: ");

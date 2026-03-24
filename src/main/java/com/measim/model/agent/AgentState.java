@@ -24,6 +24,11 @@ public class AgentState {
     private int humanEmployees;
     private double commonsScore;
 
+    // Experience tracking: domain → ticks spent in that domain
+    // GM uses this to adjust risk profiles and evaluation outcomes
+    private final Map<String, Integer> experienceTicks;
+    private final Map<String, Integer> experienceSuccesses;
+
     public AgentState(HexCoord startLocation, double startingCredits) {
         this.credits = startingCredits;
         this.scoreVector = new ScoreVector();
@@ -35,6 +40,8 @@ public class AgentState {
         this.location = startLocation;
         this.satisfaction = 0.5;
         this.domainTwoCompliance = true;
+        this.experienceTicks = new HashMap<>();
+        this.experienceSuccesses = new HashMap<>();
         this.totalRevenue = 0;
         this.totalEmissions = 0;
         this.humanEmployees = 0;
@@ -82,4 +89,31 @@ public class AgentState {
     public void setHumanEmployees(int count) { this.humanEmployees = count; }
     public double commonsScore() { return commonsScore; }
     public void setCommonsScore(double score) { this.commonsScore = score; }
+
+    // Experience tracking
+    public void addExperience(String domain) {
+        experienceTicks.merge(domain, 1, Integer::sum);
+    }
+    public void recordSuccess(String domain) {
+        experienceSuccesses.merge(domain, 1, Integer::sum);
+    }
+    public int getExperienceTicks(String domain) { return experienceTicks.getOrDefault(domain, 0); }
+    public int getSuccessCount(String domain) { return experienceSuccesses.getOrDefault(domain, 0); }
+    public Map<String, Integer> allExperience() { return Collections.unmodifiableMap(experienceTicks); }
+
+    /**
+     * Experience summary for GM context. Shows domains the agent has worked in
+     * and how successful they've been.
+     */
+    public String experienceSummary() {
+        if (experienceTicks.isEmpty()) return "No experience yet.";
+        StringBuilder sb = new StringBuilder();
+        experienceTicks.entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .forEach(e -> {
+                    int successes = experienceSuccesses.getOrDefault(e.getKey(), 0);
+                    sb.append(String.format("%s: %d ticks (%d successes), ", e.getKey(), e.getValue(), successes));
+                });
+        return sb.toString();
+    }
 }

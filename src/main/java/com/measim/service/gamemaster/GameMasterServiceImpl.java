@@ -2,6 +2,7 @@ package com.measim.service.gamemaster;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.measim.dao.AgentDao;
 import com.measim.dao.InfrastructureDao;
 import com.measim.dao.ProductionChainDao;
 import com.measim.dao.TechnologyRegistryDao;
@@ -32,6 +33,7 @@ public class GameMasterServiceImpl implements GameMasterService {
     private final ProductionChainDao chainDao;
     private final InfrastructureDao infraDao;
     private final WorldDao worldDao;
+    private final AgentDao agentDao;
     private final LlmService llmService;
     private final CommunicationService commService;
     private final List<NovelAction> pendingNovelActions = new ArrayList<>();
@@ -41,12 +43,13 @@ public class GameMasterServiceImpl implements GameMasterService {
     @Inject
     public GameMasterServiceImpl(TechnologyRegistryDao techRegistry,
                                   ProductionChainDao chainDao, InfrastructureDao infraDao,
-                                  WorldDao worldDao, LlmService llmService,
-                                  CommunicationService commService) {
+                                  WorldDao worldDao, AgentDao agentDao,
+                                  LlmService llmService, CommunicationService commService) {
         this.techRegistry = techRegistry;
         this.chainDao = chainDao;
         this.infraDao = infraDao;
         this.worldDao = worldDao;
+        this.agentDao = agentDao;
         this.llmService = llmService;
         this.commService = commService;
         this.fallbackRandom = new Random(42);
@@ -135,9 +138,10 @@ public class GameMasterServiceImpl implements GameMasterService {
             WorldState minimalState = new WorldState(0.7, 0.35, 0.5, 1000, 200, 0,
                     techRegistry.discoveryCount(), currentTick, 12, 0, 0, recentEventLog);
 
+            String experience = getAgentExperience(action.agentId());
             LlmResponse response = llmService.queryGameMaster(
                     GameMasterPrompts.novelActionSystemPrompt(),
-                    GameMasterPrompts.novelActionUserPrompt(action, minimalState)
+                    GameMasterPrompts.novelActionUserPrompt(action, minimalState, experience)
             ).join();
 
             return parseNovelActionResponse(response.content(), action, currentTick);
@@ -200,10 +204,12 @@ public class GameMasterServiceImpl implements GameMasterService {
             Tile connectionTile = proposal.connectTo() != null ? worldDao.getTile(proposal.connectTo()) : null;
 
             String systemPrompt = GameMasterPrompts.infrastructureEvalSystemPrompt();
+            String experience = getAgentExperience(proposal.agentId());
             String userPrompt = GameMasterPrompts.infrastructureEvalUserPrompt(
                     proposal, techRegistry.getAllTechNodes(), infraDao.getAllTypes(),
                     locationTile != null ? locationTile.terrain().name() : "UNKNOWN",
-                    connectionTile != null ? connectionTile.terrain().name() : "N/A");
+                    connectionTile != null ? connectionTile.terrain().name() : "N/A",
+                    experience);
 
             // Log GM's thinking
             commService.logThought(GM_ID,
@@ -487,6 +493,12 @@ public class GameMasterServiceImpl implements GameMasterService {
     @Override public int discoveryCount() { return techRegistry.discoveryCount(); }
 
     // ========== INTERNAL HELPERS ==========
+
+    private String getAgentExperience(String agentId) {
+        var agent = agentDao.getAgent(agentId);
+        if (agent == null) return "Unknown agent.";
+        return agent.state().experienceSummary();
+    }
 
     private void registerDiscovery(DiscoverySpec discovery) {
         techRegistry.registerDiscovery(discovery);

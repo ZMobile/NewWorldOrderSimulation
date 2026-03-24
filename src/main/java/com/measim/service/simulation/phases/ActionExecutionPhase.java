@@ -158,6 +158,8 @@ public class ActionExecutionPhase implements TickPhase {
 
         double extractionMultiplier = infrastructureService.getExtractionMultiplier(loc);
 
+        agent.state().addExperience("extraction");
+
         // Extract from local tile
         for (ResourceNode resource : tile.resources()) {
             if (!resource.isDepleted()) {
@@ -203,6 +205,8 @@ public class ActionExecutionPhase implements TickPhase {
                 agent.state().addEmissions(result.pollutionGenerated());
                 environmentService.applyProductionPollution(agent.state().location(), result.pollutionGenerated());
                 agent.state().setHumanEmployees(agent.state().ownedRobots() > 0 ? 0 : 1);
+                agent.state().addExperience("production:" + chain.id());
+                agent.state().recordSuccess("production:" + chain.id());
                 agent.addMemory(new MemoryEntry(currentTick, "ACTION",
                         "Produced: " + chain.name(), 0.5, null, 0));
                 break; // one production per tick
@@ -319,6 +323,7 @@ public class ActionExecutionPhase implements TickPhase {
             case AgentAction.PurchaseRobot ignored -> {
                 if (agent.state().spendCredits(config.robotInitialCost())) {
                     agent.state().setOwnedRobots(agent.state().ownedRobots() + 1);
+                    agent.state().addExperience("automation");
                     agent.addMemory(new MemoryEntry(currentTick, "ACTION",
                             "Purchased robot #" + agent.state().ownedRobots(), 0.7, null, -config.robotInitialCost()));
                 }
@@ -327,11 +332,13 @@ public class ActionExecutionPhase implements TickPhase {
                 if (agent.state().spendCredits(research.creditInvestment())) {
                     gameMasterService.submitResearch(agent.id(), research.direction(),
                             research.creditInvestment(), currentTick);
+                    agent.state().addExperience("research:" + research.direction());
                 }
             }
             case AgentAction.ContributeCommons contrib -> {
                 if (agent.state().spendCredits(contrib.creditInvestment())) {
                     agent.state().setCommonsScore(Math.min(1.0, agent.state().commonsScore() + 0.05));
+                    agent.state().addExperience("commons");
                 }
             }
             case AgentAction.BuildInfrastructure buildInfra -> {
@@ -349,6 +356,8 @@ public class ActionExecutionPhase implements TickPhase {
                     var result = infrastructureService.build(agent.id(), typeOpt.get().id(),
                             buildInfra.location(), buildInfra.connectTo(), currentTick);
                     if (result.success()) {
+                        agent.state().addExperience("infrastructure");
+                        agent.state().recordSuccess("infrastructure");
                         agent.addMemory(new MemoryEntry(currentTick, "ACTION",
                                 "Built " + result.infrastructure().type().name(),
                                 0.8, null, -result.infrastructure().type().constructionCost()));
@@ -359,7 +368,11 @@ public class ActionExecutionPhase implements TickPhase {
                 var proposal = new ServiceProposal(agent.id(), cs.name(), cs.description(),
                         cs.category(), "All agents in range", "Market rate",
                         "Credits and time", cs.location(), cs.budget());
-                agentServiceManager.proposeService(proposal, currentTick);
+                var created = agentServiceManager.proposeService(proposal, currentTick);
+                if (created.isPresent()) {
+                    agent.state().addExperience("service:" + cs.category());
+                    agent.state().recordSuccess("service:" + cs.category());
+                }
             }
             case AgentAction.ConsumeService consume -> {
                 agentServiceManager.consumeService(agent.id(), consume.serviceInstanceId(), currentTick);
