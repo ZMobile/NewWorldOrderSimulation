@@ -28,7 +28,8 @@ public class CommunicationPanel extends VBox {
     private final Label statusLabel = new Label("0 messages");
     private final CheckBox autoScrollCheck = new CheckBox("Auto-scroll");
     private List<Message> allMessages = new ArrayList<>();
-    private int searchIndex = -1; // current search match position
+    private int searchIndex = -1;
+    private boolean showFullText = false;
 
     public CommunicationPanel() {
         setSpacing(3);
@@ -59,13 +60,21 @@ public class CommunicationPanel extends VBox {
         copyAllBtn.setOnAction(e -> {
             StringBuilder sb = new StringBuilder();
             for (Message msg : getFilteredMessages()) {
-                sb.append(formatMessageFull(msg)).append("\n\n");
+                sb.append(formatMessageFull(msg)).append("\n---\n");
             }
-            copyToClipboard(sb.toString());
+            String text = sb.toString();
+            if (text.isEmpty()) text = "(no messages)";
+            copyToClipboard(text);
+            statusLabel.setText("Copied " + getFilteredMessages().size() + " messages");
         });
 
+        CheckBox wrapCheck = new CheckBox("Full text");
+        wrapCheck.setSelected(false);
+        wrapCheck.setStyle("-fx-font-size: 11;");
+        wrapCheck.selectedProperty().addListener((obs, o, n) -> { showFullText = n; refreshView(); });
+
         HBox filters = new HBox(3, channelFilter, agentFilter, searchField);
-        HBox buttons = new HBox(3, refreshBtn, copyAllBtn, autoScrollCheck, statusLabel);
+        HBox buttons = new HBox(3, refreshBtn, copyAllBtn, wrapCheck, autoScrollCheck, statusLabel);
 
         messageList.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 10;");
         messageList.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
@@ -149,11 +158,16 @@ public class CommunicationPanel extends VBox {
                 case GM_WORLD_NARRATION -> "[WORLD]";
             };
 
-            String preview = msg.content().length() > 80
-                    ? msg.content().substring(0, 80) + "..."
-                    : msg.content();
+            String content;
+            if (showFullText) {
+                content = msg.content().replace("\n", " ");
+            } else {
+                content = msg.content().length() > 80
+                        ? msg.content().substring(0, 80) + "..."
+                        : msg.content();
+            }
             messageList.getItems().add(String.format("T%d %s %s: %s",
-                    msg.tick(), prefix, msg.senderId(), preview));
+                    msg.tick(), prefix, msg.senderId(), content));
         }
 
         statusLabel.setText(filtered.size() + " messages");
