@@ -81,32 +81,24 @@ public class DecisionPhase implements TickPhase {
                 System.out.printf("    [Decision] Escalating %d/%d agents to LLM...%n",
                         toEscalate.size(), agentDao.getAgentCount());
 
-                // Fire LLM calls concurrently in batches
-                int batchSize = 10;
-                for (int i = 0; i < toEscalate.size(); i += batchSize) {
-                    int end = Math.min(i + batchSize, toEscalate.size());
-                    List<Agent> batch = toEscalate.subList(i, end);
+                // Fire ALL LLM calls concurrently — no batching, no caps
+                var futures = toEscalate.stream()
+                        .map(agent -> {
+                            String spatial = buildSpatialContext(agent);
+                            String decision = "Strategic decision for tick " + currentTick;
+                            return Map.entry(agent.id(),
+                                    llmService.escalateDecision(agent, spatial, decision, currentTick));
+                        })
+                        .toList();
 
-                    var futures = batch.stream()
-                            .map(agent -> {
-                                String spatial = buildSpatialContext(agent);
-                                String decision = "Strategic decision for tick " + currentTick;
-                                return Map.entry(agent.id(),
-                                        llmService.escalateDecision(agent, spatial, decision, currentTick));
-                            })
-                            .toList();
+                CompletableFuture.allOf(futures.stream()
+                        .map(Map.Entry::getValue)
+                        .toArray(CompletableFuture[]::new)).join();
 
-                    // Wait for batch
-                    CompletableFuture.allOf(futures.stream()
-                            .map(Map.Entry::getValue)
-                            .toArray(CompletableFuture[]::new)).join();
-
-                    // Replace deterministic actions with LLM actions
-                    for (var entry : futures) {
-                        AgentAction llmAction = entry.getValue().join();
-                        if (!(llmAction instanceof AgentAction.Idle)) {
-                            pendingActions.put(entry.getKey(), llmAction);
-                        }
+                for (var entry : futures) {
+                    AgentAction llmAction = entry.getValue().join();
+                    if (!(llmAction instanceof AgentAction.Idle)) {
+                        pendingActions.put(entry.getKey(), llmAction);
                     }
                 }
             }

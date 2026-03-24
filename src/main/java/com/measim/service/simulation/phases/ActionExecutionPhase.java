@@ -126,21 +126,16 @@ public class ActionExecutionPhase implements TickPhase {
             executeStrategicAction(entry.getKey(), entry.getValue(), market, currentTick);
         }
 
-        // Execute GM actions concurrently in batches
+        // Execute ALL GM actions concurrently — no batching
         if (!gmActions.isEmpty()) {
-            System.out.printf("    [Action] %d GM evaluations needed, processing concurrently...%n", gmActions.size());
-            int batchSize = 15; // concurrent GM calls per batch
-            for (int i = 0; i < gmActions.size(); i += batchSize) {
-                int end = Math.min(i + batchSize, gmActions.size());
-                var batch = gmActions.subList(i, end);
+            System.out.printf("    [Action] %d GM evaluations, firing all concurrently...%n", gmActions.size());
 
-                var futures = batch.stream()
-                        .map(entry -> java.util.concurrent.CompletableFuture.runAsync(() ->
-                                executeStrategicAction(entry.getKey(), entry.getValue(), market, currentTick)))
-                        .toArray(java.util.concurrent.CompletableFuture[]::new);
+            var futures = gmActions.stream()
+                    .map(entry -> java.util.concurrent.CompletableFuture.runAsync(() ->
+                            executeStrategicAction(entry.getKey(), entry.getValue(), market, currentTick)))
+                    .toArray(java.util.concurrent.CompletableFuture[]::new);
 
-                java.util.concurrent.CompletableFuture.allOf(futures).join();
-            }
+            java.util.concurrent.CompletableFuture.allOf(futures).join();
         }
 
         // Phase C: Novel actions — periodic GM interaction for non-incapacitated agents.

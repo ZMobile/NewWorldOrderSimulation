@@ -242,28 +242,20 @@ public class GameMasterServiceImpl implements GameMasterService {
             return events;
         }
 
-        // LLM: batch calls concurrently (max 10 concurrent to avoid rate limits)
+        // Fire ALL novel action calls concurrently — no batching
         List<WorldEvent> events = java.util.Collections.synchronizedList(new ArrayList<>());
-        int batchSize = 10;
-        for (int i = 0; i < toProcess.size(); i += batchSize) {
-            int end = Math.min(i + batchSize, toProcess.size());
-            List<NovelAction> batch = toProcess.subList(i, end);
+        System.out.printf("    [GM] Processing %d novel actions concurrently...%n", toProcess.size());
 
-            System.out.printf("    [GM] Processing batch %d-%d of %d...%n", i + 1, end, toProcess.size());
+        var futures = toProcess.stream()
+                .map(action -> java.util.concurrent.CompletableFuture.supplyAsync(() ->
+                        adjudicateOneNovelAction(action, currentTick, worldState)))
+                .toList();
 
-            // Fire all calls in batch concurrently
-            var futures = batch.stream()
-                    .map(action -> java.util.concurrent.CompletableFuture.supplyAsync(() ->
-                            adjudicateOneNovelAction(action, currentTick, worldState)))
-                    .toList();
+        java.util.concurrent.CompletableFuture.allOf(futures.toArray(java.util.concurrent.CompletableFuture[]::new)).join();
 
-            // Wait for batch to complete
-            java.util.concurrent.CompletableFuture.allOf(futures.toArray(java.util.concurrent.CompletableFuture[]::new)).join();
-
-            for (var future : futures) {
-                WorldEvent event = future.join();
-                if (event != null) { events.add(event); logEvent(event); }
-            }
+        for (var future : futures) {
+            WorldEvent event = future.join();
+            if (event != null) { events.add(event); logEvent(event); }
         }
         return events;
     }
