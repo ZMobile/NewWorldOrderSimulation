@@ -20,7 +20,7 @@ import java.util.Map;
 public class Contract {
 
     public enum ContractType {
-        EMPLOYMENT,          // partyA employs partyB, pays wages
+        WORK_RELATION,       // partyA hires partyB — any arrangement (full-time, contract, gig, freelance, apprentice)
         RENTAL,              // partyA rents property to partyB, partyB pays rent
         TRADE_AGREEMENT,     // recurring supply: partyA delivers X to partyB at price Y
         SERVICE_SUBSCRIPTION,// partyB subscribes to partyA's service
@@ -63,13 +63,13 @@ public class Contract {
     }
 
     /**
-     * For EMPLOYMENT: payment flows from A (employer) to B (employee).
+     * For WORK_RELATION: payment flows from A (hirer) to B (worker).
      * For RENTAL: payment flows from B (tenant) to A (landlord).
      * Direction determined by type.
      */
     public String payerId() {
         return switch (type) {
-            case EMPLOYMENT -> partyAId;  // employer pays employee
+            case WORK_RELATION -> partyAId;  // hirer pays worker
             case RENTAL, SERVICE_SUBSCRIPTION -> partyBId;  // tenant/subscriber pays
             case TRADE_AGREEMENT -> partyBId;  // buyer pays
             case PARTNERSHIP -> null;  // complex — handled by terms
@@ -79,12 +79,25 @@ public class Contract {
 
     public String payeeId() {
         return switch (type) {
-            case EMPLOYMENT -> partyBId;
+            case WORK_RELATION -> partyBId;
             case RENTAL, SERVICE_SUBSCRIPTION -> partyAId;
             case TRADE_AGREEMENT -> partyAId;
             case PARTNERSHIP -> null;
             case CUSTOM -> partyAId;
         };
+    }
+
+    /**
+     * How much this work relation counts toward the LD axis "human employee" metric.
+     * Full-time = 1.0, part-time = 0.5, gig/contractor = varies by hoursPerTick.
+     * Uses contract terms — no rigid classification needed.
+     */
+    public double laborWeight() {
+        if (type != ContractType.WORK_RELATION) return 0;
+        // "laborWeight" term overrides if explicitly set (GM or agents can negotiate this)
+        if (terms.containsKey("laborWeight")) return terms.get("laborWeight");
+        // Otherwise derive from hoursPerTick (1.0 = full-time equivalent)
+        return terms.getOrDefault("hoursPerTick", 1.0);
     }
 
     public void terminate(String initiatorId) {

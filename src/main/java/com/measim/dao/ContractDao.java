@@ -11,6 +11,6 @@ public interface ContractDao {
     List<Contract> getActiveContracts();
     List<Contract> getContractsForAgent(String agentId);
     List<Contract> getContractsByType(Contract.ContractType type);
-    List<Contract> getEmploymentContractsForEmployer(String employerId);
-    List<Contract> getEmploymentContractsForEmployee(String employeeId);
+    List<Contract> getWorkRelationsForHirer(String hirerId);
+    List<Contract> getWorkRelationsForWorker(String workerId);
 }

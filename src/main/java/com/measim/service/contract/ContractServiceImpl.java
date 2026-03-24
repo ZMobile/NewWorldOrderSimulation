@@ -32,12 +32,14 @@ public class ContractServiceImpl implements ContractService {
                 paymentPerTick, currentTick, durationTicks, 3, terms);
         contractDao.addContract(contract);
 
-        // Update employment status
-        if (type == Contract.ContractType.EMPLOYMENT) {
-            Agent employee = agentDao.getAgent(partyBId);
-            if (employee != null) employee.state().setEmploymentStatus(EmploymentStatus.EMPLOYED);
-            Agent employer = agentDao.getAgent(partyAId);
-            if (employer != null) employer.state().setEmploymentStatus(EmploymentStatus.BUSINESS_OWNER);
+        if (type == Contract.ContractType.WORK_RELATION) {
+            Agent worker = agentDao.getAgent(partyBId);
+            if (worker != null) worker.state().setEmploymentStatus(EmploymentStatus.EMPLOYED);
+            Agent hirer = agentDao.getAgent(partyAId);
+            if (hirer != null) {
+                hirer.state().setEmploymentStatus(EmploymentStatus.BUSINESS_OWNER);
+                hirer.state().setHumanEmployees((int) Math.ceil(getWeightedLaborCount(partyAId)));
+            }
         }
 
         return contract;
@@ -46,14 +48,12 @@ public class ContractServiceImpl implements ContractService {
     @Override
     public void processContracts(int currentTick) {
         for (Contract contract : contractDao.getActiveContracts()) {
-            // Check expiration
             if (contract.isExpired(currentTick)) {
                 contract.expire();
                 handleContractEnd(contract);
                 continue;
             }
 
-            // Process payment
             String payerId = contract.payerId();
             String payeeId = contract.payeeId();
             if (payerId == null || payeeId == null) continue;
@@ -66,19 +66,17 @@ public class ContractServiceImpl implements ContractService {
                 payee.state().addCredits(contract.paymentPerTick());
                 payee.state().addRevenue(contract.paymentPerTick());
 
-                // Track human employees for LD axis
-                if (contract.type() == Contract.ContractType.EMPLOYMENT) {
-                    Agent employer = agentDao.getAgent(contract.partyAId());
-                    if (employer != null) {
-                        employer.state().setHumanEmployees(getHumanEmployeeCount(contract.partyAId()));
+                if (contract.type() == Contract.ContractType.WORK_RELATION) {
+                    Agent hirer = agentDao.getAgent(contract.partyAId());
+                    if (hirer != null) {
+                        hirer.state().setHumanEmployees((int) Math.ceil(getWeightedLaborCount(contract.partyAId())));
                     }
                 }
             } else {
-                // Can't pay — breach
                 contract.breach();
                 handleContractEnd(contract);
                 payer.addMemory(new MemoryEntry(currentTick, "CONTRACT",
-                        "Breached contract: couldn't afford payment of " + contract.paymentPerTick(),
+                        "Breached contract: couldn't afford " + contract.paymentPerTick(),
                         0.8, contract.payeeId(), 0));
             }
         }
@@ -93,19 +91,21 @@ public class ContractServiceImpl implements ContractService {
     }
 
     @Override
-    public List<Contract> getEmployeesOf(String employerId) {
-        return contractDao.getEmploymentContractsForEmployer(employerId);
+    public List<Contract> getWorkRelationsOf(String hirerId) {
+        return contractDao.getWorkRelationsForHirer(hirerId);
     }
 
     @Override
-    public Optional<Contract> getEmploymentOf(String employeeId) {
-        return contractDao.getEmploymentContractsForEmployee(employeeId).stream().findFirst();
+    public Optional<Contract> getWorkRelationFor(String workerId) {
+        return contractDao.getWorkRelationsForWorker(workerId).stream().findFirst();
     }
 
     @Override
-    public int getHumanEmployeeCount(String employerId) {
-        return (int) contractDao.getEmploymentContractsForEmployer(employerId).stream()
-                .filter(Contract::isActive).count();
+    public double getWeightedLaborCount(String hirerId) {
+        return contractDao.getWorkRelationsForHirer(hirerId).stream()
+                .filter(Contract::isActive)
+                .mapToDouble(Contract::laborWeight)
+                .sum();
     }
 
     @Override
@@ -114,20 +114,18 @@ public class ContractServiceImpl implements ContractService {
     }
 
     private void handleContractEnd(Contract contract) {
-        if (contract.type() == Contract.ContractType.EMPLOYMENT) {
-            Agent employee = agentDao.getAgent(contract.partyBId());
-            if (employee != null) {
-                // Check if they have other employment
-                boolean stillEmployed = contractDao.getEmploymentContractsForEmployee(contract.partyBId())
+        if (contract.type() == Contract.ContractType.WORK_RELATION) {
+            Agent worker = agentDao.getAgent(contract.partyBId());
+            if (worker != null) {
+                boolean stillWorking = contractDao.getWorkRelationsForWorker(contract.partyBId())
                         .stream().anyMatch(c -> c.isActive() && !c.id().equals(contract.id()));
-                if (!stillEmployed) {
-                    employee.state().setEmploymentStatus(EmploymentStatus.UNEMPLOYED);
+                if (!stillWorking) {
+                    worker.state().setEmploymentStatus(EmploymentStatus.UNEMPLOYED);
                 }
             }
-            // Update employer's human employee count
-            Agent employer = agentDao.getAgent(contract.partyAId());
-            if (employer != null) {
-                employer.state().setHumanEmployees(getHumanEmployeeCount(contract.partyAId()));
+            Agent hirer = agentDao.getAgent(contract.partyAId());
+            if (hirer != null) {
+                hirer.state().setHumanEmployees((int) Math.ceil(getWeightedLaborCount(contract.partyAId())));
             }
         }
     }

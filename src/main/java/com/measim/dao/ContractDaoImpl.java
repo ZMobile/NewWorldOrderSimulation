@@ -22,12 +22,12 @@ public class ContractDaoImpl implements ContractDao {
     @Override public List<Contract> getContractsByType(Contract.ContractType type) {
         return contracts.values().stream().filter(c -> c.isActive() && c.type() == type).toList();
     }
-    @Override public List<Contract> getEmploymentContractsForEmployer(String employerId) {
+    @Override public List<Contract> getWorkRelationsForHirer(String hirerId) {
         return contracts.values().stream()
-                .filter(c -> c.isActive() && c.type() == Contract.ContractType.EMPLOYMENT && c.partyAId().equals(employerId)).toList();
+                .filter(c -> c.isActive() && c.type() == Contract.ContractType.WORK_RELATION && c.partyAId().equals(hirerId)).toList();
     }
-    @Override public List<Contract> getEmploymentContractsForEmployee(String employeeId) {
+    @Override public List<Contract> getWorkRelationsForWorker(String workerId) {
         return contracts.values().stream()
-                .filter(c -> c.isActive() && c.type() == Contract.ContractType.EMPLOYMENT && c.partyBId().equals(employeeId)).toList();
+                .filter(c -> c.isActive() && c.type() == Contract.ContractType.WORK_RELATION && c.partyBId().equals(workerId)).toList();
     }
 }
