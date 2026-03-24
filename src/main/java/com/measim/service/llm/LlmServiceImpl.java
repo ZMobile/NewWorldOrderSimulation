@@ -92,10 +92,7 @@ public class LlmServiceImpl implements LlmService {
     @Override public int totalCalls() { return llmDao.totalCalls(); }
 
     private String selectModel(Agent agent) {
-        // Complex decisions (entrepreneurship, governance) use Opus; simple escalations use Sonnet
-        return switch (agent.identity().archetype()) {
-            case ENTREPRENEUR, POLITICIAN, INNOVATOR -> config.complexModel();
-            default -> config.agentModel();
-        };
+        // All agents use Sonnet. Opus reserved for GM coherence audit + world events only.
+        return config.agentModel();
     }
 }
