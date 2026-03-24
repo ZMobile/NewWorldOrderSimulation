@@ -165,9 +165,15 @@ public class DecisionPhase implements TickPhase {
         if (!llmService.isAvailable()) return;
         interactionActions.clear();
 
+        // Track message count before each round — only agents with NEW messages since last round respond
+        Set<String> respondedAgents = new HashSet<>();
+
         for (int round = 0; round < maxRounds; round++) {
-            // Find agents who have something new to respond to
+            int msgCountBefore = communicationDao.getAllMessages().size();
+
+            // Find agents with new input who haven't already responded this cycle
             List<Agent> responders = agentDao.getAllAgents().stream()
+                    .filter(a -> !respondedAgents.contains(a.id()))
                     .filter(a -> hasNewInput(a, currentTick))
                     .toList();
 
@@ -208,6 +214,11 @@ public class DecisionPhase implements TickPhase {
                     .map(Map.Entry::getValue)
                     .toArray(CompletableFuture[]::new)).join();
 
+            // Mark all responders as having responded
+            for (var entry : futures) {
+                respondedAgents.add(entry.getKey());
+            }
+
             int actions = 0;
             for (var entry : futures) {
                 AgentAction action = entry.getValue().join();
@@ -219,7 +230,21 @@ public class DecisionPhase implements TickPhase {
             System.out.printf("    [Interaction] Round %d: %d actions produced%n", round + 1, actions);
             System.out.flush();
 
-            if (actions == 0) break; // no one did anything, stop
+            if (actions == 0) break;
+
+            // Check if new messages were generated — if so, new agents may need to respond
+            int msgCountAfter = communicationDao.getAllMessages().size();
+            if (msgCountAfter == msgCountBefore) break; // no new messages, no point continuing
+
+            // Allow agents who received NEW messages to respond in next round
+            // (they were marked as responded, but new input overrides that)
+            for (var msg : communicationDao.getAllMessages().subList(
+                    Math.min(msgCountBefore, communicationDao.getAllMessages().size()),
+                    communicationDao.getAllMessages().size())) {
+                if (msg.tick() == currentTick && msg.receiverId() != null) {
+                    respondedAgents.remove(msg.receiverId()); // allow them to respond again
+                }
+            }
         }
     }
 

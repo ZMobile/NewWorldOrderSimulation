@@ -166,8 +166,16 @@ public class CommunicationPanel extends VBox {
                         ? msg.content().substring(0, 80) + "..."
                         : msg.content();
             }
-            messageList.getItems().add(String.format("T%d %s %s: %s",
-                    msg.tick(), prefix, msg.senderId(), content));
+            // Show direction when filtering to a specific agent
+            String agentFilter2 = agentFilter.getValue();
+            String direction = "";
+            if (agentFilter2 != null && !agentFilter2.startsWith("All") && !agentFilter2.equals("GAME_MASTER")) {
+                if (msg.senderId().equals(agentFilter2)) direction = "OUT> ";
+                else if (msg.receiverId().equals(agentFilter2)) direction = "IN < ";
+            }
+            messageList.getItems().add(String.format("T%d %s %s%s->%s: %s",
+                    msg.tick(), prefix, direction, msg.senderId(),
+                    msg.receiverId() != null ? msg.receiverId() : "?", content));
         }
 
         statusLabel.setText(filtered.size() + " messages");
