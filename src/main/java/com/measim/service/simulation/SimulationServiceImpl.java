@@ -195,7 +195,7 @@ public class SimulationServiceImpl implements SimulationService {
                 reserveService.gmManageReserve(currentTick);
             }
 
-            // Save snapshots
+            // Save snapshots + comm log periodically
             if (config.snapshotInterval() > 0 && currentTick % config.snapshotInterval() == 0) {
                 try {
                     snapshotService.saveSnapshot(currentTick, Path.of("output/snapshots"));
@@ -203,6 +203,10 @@ public class SimulationServiceImpl implements SimulationService {
                     System.err.println("Snapshot failed: " + e.getMessage());
                 }
             }
+            // Export comm log every tick so it's always available for inspection
+            try {
+                snapshotService.exportFullCommunicationLog(Path.of("output/communication_log.json"));
+            } catch (IOException e) { /* non-critical */ }
         }
 
         System.out.println("Simulation complete.");

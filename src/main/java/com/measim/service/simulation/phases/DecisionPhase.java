@@ -171,7 +171,8 @@ public class DecisionPhase implements TickPhase {
      * Each agent can participate in multiple rounds IF they receive new input.
      * An agent who sent a message and got a reply can respond to the reply.
      */
-    public void runInteractionRounds(int currentTick, int maxRounds) {
+    public void runInteractionRounds(int currentTick, int maxRounds,
+                                      java.util.function.BiConsumer<String, AgentAction> actionExecutor) {
         if (!llmService.isAvailable()) return;
         interactionActions.clear();
 
@@ -225,10 +226,12 @@ public class DecisionPhase implements TickPhase {
                 AgentAction action = entry.getValue().join();
                 if (!(action instanceof AgentAction.Idle)) {
                     interactionActions.add(Map.entry(entry.getKey(), action));
+                    // Execute immediately so messages/offers are visible to next round
+                    actionExecutor.accept(entry.getKey(), action);
                     actions++;
                 }
             }
-            System.out.printf("    [Interaction] Round %d: %d actions%n", round + 1, actions);
+            System.out.printf("    [Interaction] Round %d: %d actions executed%n", round + 1, actions);
             System.out.flush();
 
             if (actions == 0) break;
