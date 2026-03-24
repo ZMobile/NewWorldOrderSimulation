@@ -126,7 +126,7 @@ You don't deploy a new operating system to production without testing it. MeaSim
 - **Agent migration** between jurisdictions based on satisfaction
 - **Technology discovery** through a Game Master LLM that adjudicates research and maintains world coherence
 
-### The 12 Archetypes: Adversarial Testing by Design
+### The 18 Archetypes: Adversarial Testing by Design
 
 Each agent archetype is designed to stress-test a specific aspect of the system:
 
@@ -213,7 +213,7 @@ com.measim
 │   ├── world/            HexCoord, HexGrid, Tile, Terrain, Environment
 │   ├── economy/          Resources, Products, Orders, Transactions, OrderBook
 │   ├── scoring/          ScoreVector, ModifierSet, AuditEntry, SectorBaseline
-│   ├── agent/            Agent, State, Identity, 12 Archetypes, Memory, Actions
+│   ├── agent/            Agent, State, Identity, 18 Archetypes, Memory, Actions
 │   ├── gamemaster/       Discoveries, TechTree, WorldEvents, NovelActions, InfrastructureProposals
 │   ├── governance/       Government, Proposals, Disputes
 │   ├── infrastructure/   Infrastructure, InfrastructureType, Effects, Constraints
@@ -224,8 +224,9 @@ com.measim
 │   ├── event/            EventBus
 │   └── config/           SimulationConfig (YAML)
 ├── dao/                  Data access (interface + impl, Guice-injected)
-│   13 DAOs: World, Agent, Market, Audit, ProductionChain, Metrics, LLM,
-│   TechnologyRegistry, Government, Infrastructure, Communication, Risk, Externality
+│   16 DAOs: World, Agent, Market, Audit, ProductionChain, Metrics, LLM,
+│   TechnologyRegistry, Government, Infrastructure, Communication, Risk,
+│   Externality, Service, Property, Contract
 ├── service/              Business logic (interface + impl)
 │   ├── world/            Generation, Environment, Pathfinding
 │   ├── economy/          Production, CreditFlow (realistic: no fake credit injection)
@@ -238,7 +239,10 @@ com.measim
 │   ├── risk/             Evolution model evaluation, cascade propagation, consequence application
 │   ├── externality/      Byproduct processing, true vs measured vs perceived pollution
 │   ├── communication/    Agent-to-agent, agent-to-GM, observable thought logging
-│   ├── simulation/       Tick loop (11 phases via Guice Multibinder)
+│   ├── agentservice/     Agent-created services (banking, logistics, etc.)
+│   ├── contract/         Work relations, rental, trade agreements
+│   ├── property/         Tile claims, purchase, rent, transfer
+│   ├── simulation/       Tick loop (12 phases via Guice Multibinder)
 │   ├── metrics/          Gini, satisfaction, CSV export
 │   ├── snapshot/         JSON state persistence
 │   └── comparison/       MEAS vs baseline differential analysis
@@ -318,21 +322,24 @@ Each service has:
 
 Service categories: financial, logistics, healthcare, education, legal, security, information, entertainment, maintenance, governance, custom.
 
-### Tick Loop (11 Phases)
+### Tick Loop (12 Phases)
 
 | # | Phase | LLM? | What Happens |
 |---|-------|------|-------------|
 | 1 | Perception | No | Agents observe environment, update risk perceptions from events |
-| 2 | Decision | No | Deterministic utility calculator, risk-adjusted |
-| 3 | Action | Partial | Economic pipeline (extract→produce→sell→buy) + strategic action + GM infrastructure eval |
+| 2 | Decision | **Tier 1+2** | Deterministic for all agents, then LLM escalation for eligible agents (20-50% per tick) |
+| 3 | Action | Partial | Economic pipeline (consume→extract→produce→sell→buy→hire) + strategic action + GM eval |
 | 4 | Market | No | Order books match, MEAS modifiers applied, credits flow |
-| 5 | Scoring | No | Score vectors recomputed, modifiers updated, audit trail |
-| 6 | UBI | No | Credits distributed from pool to all agents |
-| 7 | Governance | Partial | Proposals, votes, disputes |
-| 8 | Environment | No | Pollution diffusion, recovery, infrastructure maintenance |
-| 9 | Risk | Partial | Deterministic probability check → GM adjudicates triggered risks → cascades |
-| 10 | Events | Partial | GM: research results, novel actions, spontaneous world events, coherence audit |
-| 11 | Measurement | No | Metrics collected, snapshots saved |
+| 5 | Contracts | No | Wages paid, rent collected, service subscriptions, breach detection |
+| 6 | Scoring | No | Score vectors recomputed, modifiers updated, audit trail |
+| 7 | UBI | No | Credits distributed from pool to all agents |
+| 8 | Governance | Partial | Proposals, votes, disputes |
+| 9 | Environment | No | Pollution diffusion, recovery, infrastructure maintenance, externality processing |
+| 10 | Risk | Partial | Deterministic probability check → GM adjudicates triggered risks → cascades |
+| 11 | Events | **Opus** | GM: research, novel actions, world events (Opus), yearly coherence audit (Opus) |
+| 12 | Measurement | No | Metrics collected, snapshots saved |
+
+**Model tiering**: Sonnet 4.6 for all routine operations (agent decisions, infrastructure eval, novel actions). Opus 4.6 for coherence audits (yearly) and world event generation — these need holistic world understanding. ~50 Opus calls per 50-year sim ≈ $3-5.
 
 ### Property Rights & Labor Market
 
@@ -429,25 +436,26 @@ That's the point. **Economics should be an engineering discipline.** You specify
 
 ## Project Status
 
-All core systems built and compiling (BUILD SUCCESSFUL, 35 tests):
+All core systems built, wired, and compiling:
 
-- **World**: Hex grid, Perlin noise terrain, 7 terrain types, resource placement, settlement zones
+- **World**: Hex grid, Perlin noise terrain, 7 terrain types, resource placement, settlement zones, tile history tracking
 - **Economy**: Realistic trade-driven credit flow (no fake injection), order book markets, production chains, consumption needs
 - **MEAS Scoring**: All 5 axes (EF, CC, LD, RC, EP) with exact spec formulas, deterministic, auditable
-- **Agents**: 12 archetypes, memory streams, risk-adjusted utility decisions, perceived risk model
-- **LLM Integration**: Claude API client, archetype prompts with risk profiles, cost tracking, caching
-- **Game Master**: Full DM — research, infrastructure evaluation (agent proposes/GM evaluates), novel actions for all archetypes, spontaneous world events, yearly coherence audits. All reasoning observable.
-- **Infrastructure**: GM-dynamic types (no fixed catalog), resource flow across tiles, maintenance/degradation, terrain capacity constraints, stacking diminishing returns
-- **Risk System**: Universal (all entity types), evolution model with GM-set parameters, true vs perceived risk, cascading effects, probability evolves with age/usage/maintenance/environment/neighbors
-- **Externalities**: Universal byproduct system with true/measured/perceived pollution layers. Hidden externalities go undetected until consequences emerge. Feeds into EF scoring.
-- **Services**: Agent-created services (banking, logistics, insurance, education, etc.) — not hardcoded. GM evaluates proposals, sets properties. Competitive service market with reputation system.
-- **Property**: Tile claim system — agents own slots, not tiles. Purchase, sell, rent. Location scarcity drives property markets.
-- **Contracts**: Employment, rental, trade, subscriptions, partnerships. Wages, rent, breach detection, termination.
-- **Labor Market**: Agents hire each other. Wages flow. Robot displacement triggers LD axis. Unemployment → UBI fallback.
-- **Communication**: Observable message log — agent-to-agent, agent-to-GM, GM internal reasoning, multi-turn conversations
+- **Agents**: 18 archetypes (Worker 15%, Entrepreneur 6%, Free Rider 7%, etc.), memory streams, risk-adjusted utility decisions, perceived risk model, experience tracking per domain
+- **LLM Integration**: Claude API, two-tier decisions (deterministic + LLM escalation), concurrent batching, retry logic (3 retries with backoff), cost tracking
+- **Game Master**: Full DM — research, infrastructure evaluation (agent proposes/GM evaluates), novel actions for all archetypes, free-form action resolution, spontaneous world events, tile-specific coherence corrections. Multi-turn conversations with information boundaries. All reasoning observable.
+- **Model Tiering**: Sonnet 4.6 for routine operations, Opus 4.6 for coherence audits and world events
+- **Infrastructure**: GM-dynamic types (no fixed catalog), resource flow across tiles, maintenance/degradation, terrain capacity, stacking diminishing returns. Requires property claim to build.
+- **Risk System**: Universal (all entity types), evolution model (age/usage/maintenance/environment/neighbors), true vs perceived risk, cascading effects
+- **Externalities**: Universal byproduct system with true/measured/perceived pollution layers. Hidden externalities go undetected until consequences emerge. Processed every tick, feeds into EF scoring.
+- **Services**: Agent-created (banking, logistics, insurance, education, etc.), GM evaluates proposals. Competitive market with reputation. Agents strategically choose which services to consume.
+- **Property**: Tile claim system — agents own slots, not tiles. Required for building. Purchase, sell, rent.
+- **Contracts**: Work relations (full-time, gig, freelance — weighted labor for LD axis), rental, trade, subscriptions, partnerships. Wages, rent, breach detection.
+- **Labor Market**: Business owners hire unemployed agents. Wages flow. Robot displacement triggers LD axis. Weighted labor count prevents gig economy gaming.
+- **Communication**: Observable message log — agent-to-agent, agent-to-GM, GM internal reasoning, multi-turn conversations with information boundaries
 - **Governance**: Multi-government, voting lifecycle, judicial disputes, agent migration
-- **Metrics/Output**: Gini, satisfaction, env health — CSV export, JSON snapshots, comparison framework
-- **Visualization**: JavaFX hex renderer, dashboard charts, inspector panel
+- **Metrics/Output**: CSV metrics, comprehensive JSON snapshots (agents + infrastructure + services + contracts + property + LLM costs + risk events + communication), full communication transcript
+- **Visualization**: JavaFX hex renderer with agent dots, dashboard charts, inspector panel, communication log tab, live console with pause/clear
 
 ### Documentation
 

@@ -45,6 +45,7 @@ public final class ArchetypePrompts {
                 {"action": "PRODUCE", "chainId": "..."}
                 {"action": "PURCHASE_ROBOT"}
                 {"action": "INVEST_RESEARCH", "direction": "...", "credits": N.N}
+                {"action": "CONTRIBUTE_COMMONS", "description": "...", "credits": N.N}
                 {"action": "BUILD_INFRASTRUCTURE", "name": "...", "description": "...", "connectTo": {"q": N, "r": N} or null}
                 {"action": "CREATE_SERVICE", "name": "...", "description": "...", "category": "...", "budget": N.N}
                 {"action": "CONSUME_SERVICE", "serviceId": "..."}
