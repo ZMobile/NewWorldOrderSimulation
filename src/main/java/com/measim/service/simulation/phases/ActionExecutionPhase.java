@@ -50,6 +50,7 @@ public class ActionExecutionPhase implements TickPhase {
     private final AgentServiceManager agentServiceManager;
     private final PropertyService propertyService;
     private final ContractService contractService;
+    private final com.measim.service.trade.TradeService tradeService;
     private final SimulationConfig config;
     private SubsistenceHelper subsistenceHelper;
 
@@ -59,8 +60,8 @@ public class ActionExecutionPhase implements TickPhase {
                                  ProductionService productionService, EnvironmentService environmentService,
                                  GameMasterService gameMasterService, InfrastructureService infrastructureService,
                                  AgentServiceManager agentServiceManager, PropertyService propertyService,
-                                 ContractService contractService, PropertyDao propertyDao,
-                                 ContractDao contractDao, SimulationConfig config) {
+                                 ContractService contractService, com.measim.service.trade.TradeService tradeService,
+                                 PropertyDao propertyDao, ContractDao contractDao, SimulationConfig config) {
         this.decisionPhase = decisionPhase;
         this.agentDao = agentDao;
         this.worldDao = worldDao;
@@ -73,6 +74,7 @@ public class ActionExecutionPhase implements TickPhase {
         this.agentServiceManager = agentServiceManager;
         this.propertyService = propertyService;
         this.contractService = contractService;
+        this.tradeService = tradeService;
         this.config = config;
         this.subsistenceHelper = new SubsistenceHelper(worldDao, propertyDao, contractDao);
     }
@@ -122,21 +124,35 @@ public class ActionExecutionPhase implements TickPhase {
         }
 
         // Execute local actions immediately (no LLM)
+        System.out.printf("    [Action] %d local actions, %d GM actions queued%n",
+                localActions.size(), gmActions.size());
+        System.out.flush();
         for (var entry : localActions) {
             executeStrategicAction(entry.getKey(), entry.getValue(), market, currentTick);
         }
 
-        // Execute ALL GM actions concurrently — no batching
+        // Execute ALL GM actions concurrently with dedicated thread pool
+        // (avoids ForkJoinPool starvation from nested .join() calls)
         if (!gmActions.isEmpty()) {
             System.out.printf("    [Action] %d GM evaluations, firing all concurrently...%n", gmActions.size());
+            System.out.flush();
 
-            var futures = gmActions.stream()
-                    .map(entry -> java.util.concurrent.CompletableFuture.runAsync(() ->
-                            executeStrategicAction(entry.getKey(), entry.getValue(), market, currentTick)))
-                    .toArray(java.util.concurrent.CompletableFuture[]::new);
+            var executor = java.util.concurrent.Executors.newFixedThreadPool(
+                    Math.min(gmActions.size(), 50));
+            try {
+                var futures = gmActions.stream()
+                        .map(entry -> java.util.concurrent.CompletableFuture.runAsync(() ->
+                                executeStrategicAction(entry.getKey(), entry.getValue(), market, currentTick), executor))
+                        .toArray(java.util.concurrent.CompletableFuture[]::new);
 
-            java.util.concurrent.CompletableFuture.allOf(futures).join();
+                java.util.concurrent.CompletableFuture.allOf(futures).join();
+            } finally {
+                executor.shutdown();
+            }
         }
+
+        // Phase B.5: Process trade offers (expire old, clean up)
+        tradeService.processTrades(currentTick);
 
         // Phase C: Novel actions — periodic GM interaction for non-incapacitated agents.
         for (Agent agent : agentDao.getAllAgents()) {
@@ -480,6 +496,18 @@ public class ActionExecutionPhase implements TickPhase {
                     agent.addMemory(new MemoryEntry(currentTick, "ACTION",
                             "Failed: " + resolution.narrative(), 0.5, null, -resolution.creditCost()));
                 }
+            }
+            case AgentAction.OfferTrade offer -> {
+                tradeService.createOffer(agent.id(), offer.targetAgentId(),
+                        offer.itemsOffered(), offer.itemsRequested(),
+                        offer.creditsOffered(), offer.creditsRequested(),
+                        offer.message(), currentTick);
+            }
+            case AgentAction.AcceptTrade accept -> {
+                tradeService.acceptOffer(accept.offerId(), agent.id(), currentTick);
+            }
+            case AgentAction.RejectTrade reject -> {
+                tradeService.rejectOffer(reject.offerId());
             }
             case AgentAction.ExtractResource ignored -> {}
             case AgentAction.Produce ignored -> {}

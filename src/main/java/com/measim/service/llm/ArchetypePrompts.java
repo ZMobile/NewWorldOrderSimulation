@@ -52,15 +52,28 @@ public final class ArchetypePrompts {
                 {"action": "CREATE_SERVICE", "name": "...", "description": "...", "category": "...", "budget": N.N}
                 {"action": "CONSUME_SERVICE", "serviceId": "..."}
                 {"action": "PROPOSE_GOVERNANCE", "proposal": "..."}
+                {"action": "OFFER_TRADE", "targetAgent": "agent_id" or null (open offer), "itemsOffered": {"TIMBER": 3}, "itemsRequested": {"FOOD": 2}, "creditsOffered": 0, "creditsRequested": 0, "message": "I'll trade timber for food"}
+                {"action": "ACCEPT_TRADE", "offerId": "trade_123"}
+                {"action": "REJECT_TRADE", "offerId": "trade_123"}
                 {"action": "IDLE"}
 
-                FREE-FORM action (for creative, novel, or combined strategies):
+                TRADE: To buy/sell, you must find another agent and make an offer directly.
+                There is no built-in marketplace. Set targetAgent to a specific agent ID for a private offer,
+                or null for an open offer visible to agents within communication range.
+                Barter is supported — trade items for items, items for credits, or any mix.
+
+                FREE-FORM action (ONLY for creative strategies that no standard action covers):
                 {"action": "FREE_FORM", "description": "Describe exactly what you want to do, referencing your specific assets, infrastructure, and plans", "budget": N.N}
 
-                Use FREE_FORM when no standard action captures what you want to do.
+                IMPORTANT: Do NOT use FREE_FORM for things standard actions already handle:
+                - Buying/selling goods -> use BUY or SELL
+                - Moving -> use MOVE
+                - Building -> use BUILD_INFRASTRUCTURE
+                - Research -> use INVEST_RESEARCH
+                FREE_FORM is ONLY for combined or novel strategies that require GM judgment.
                 Examples: "Use my aqueduct's excess capacity to sell water transport to neighboring farmers"
-                "Run my mining drill at half capacity to reduce wear while still extracting"
                 "Combine my warehouse storage with a logistics service to create a distribution hub"
+                "Negotiate a bulk trade deal with 3 nearby producers for exclusive supply rights"
 
                 The Game Master will evaluate your free-form action and determine what happens.
                 Only output JSON. No explanation.
@@ -77,6 +90,12 @@ public final class ArchetypePrompts {
 
     public static String userPrompt(Agent agent, String spatialContext,
                                      String decisionContext, int currentTick) {
+        return userPrompt(agent, spatialContext, decisionContext, currentTick, "None");
+    }
+
+    public static String userPrompt(Agent agent, String spatialContext,
+                                     String decisionContext, int currentTick,
+                                     String tradeOfferContext) {
         var state = agent.state();
         String memoryContext = agent.memory().buildContextSummary(10);
 
@@ -91,6 +110,9 @@ public final class ArchetypePrompts {
                 Inventory: %s
 
                 Location:
+                %s
+
+                Pending trade offers for you:
                 %s
 
                 Decision context:
@@ -114,6 +136,7 @@ public final class ArchetypePrompts {
                 state.modifiers().combinedMultiplier(),
                 state.inventory().toString(),
                 spatialContext,
+                tradeOfferContext,
                 decisionContext,
                 memoryContext
         );

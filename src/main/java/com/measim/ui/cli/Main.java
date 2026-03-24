@@ -174,7 +174,7 @@ public class Main {
                   agentModel: "%s"
                   complexModel: "%s"
                   gameMasterModel: "%s"
-                  maxAgentCallsPerTick: 50
+                  maxAgentCallsPerTick: 9999
                   maxGameMasterCallsPerTick: 20
                   totalBudgetUsd: %.1f
                   cacheEnabled: true

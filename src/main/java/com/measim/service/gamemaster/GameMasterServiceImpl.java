@@ -39,6 +39,7 @@ public class GameMasterServiceImpl implements GameMasterService {
     private final CommunicationService commService;
     private final SimulationConfig config;
     private final com.measim.service.reserve.ReserveService reserveService;
+    private final GmTools gmTools;
     private final List<NovelAction> pendingNovelActions = new ArrayList<>();
     private final List<String> recentEventLog = new ArrayList<>();
     private final Random fallbackRandom;
@@ -47,9 +48,13 @@ public class GameMasterServiceImpl implements GameMasterService {
     public GameMasterServiceImpl(TechnologyRegistryDao techRegistry,
                                   ProductionChainDao chainDao, InfrastructureDao infraDao,
                                   WorldDao worldDao, AgentDao agentDao,
+                                  com.measim.dao.MarketDao marketDao,
+                                  com.measim.dao.ServiceDao serviceDao,
                                   LlmService llmService, CommunicationService commService,
                                   SimulationConfig config,
-                                  com.measim.service.reserve.ReserveService reserveService) {
+                                  com.measim.service.reserve.ReserveService reserveService,
+                                  com.measim.service.property.PropertyService propertyService,
+                                  com.measim.service.contract.ContractService contractService) {
         this.techRegistry = techRegistry;
         this.chainDao = chainDao;
         this.infraDao = infraDao;
@@ -59,6 +64,8 @@ public class GameMasterServiceImpl implements GameMasterService {
         this.commService = commService;
         this.config = config;
         this.reserveService = reserveService;
+        this.gmTools = new GmTools(worldDao, agentDao, marketDao, infraDao, serviceDao,
+                propertyService, contractService);
         this.fallbackRandom = new Random(42);
     }
 
@@ -134,21 +141,31 @@ public class GameMasterServiceImpl implements GameMasterService {
         }
 
         try {
-            String experience = agent.state().experienceSummary();
             String archetype = agent.identity().archetype().name();
-            String inventory = agent.state().inventory().toString();
-            String assets = buildOwnedAssetsSummary(agentId);
-            String spatial = "At tile (" + agent.state().location().q() + "," + agent.state().location().r() + ")";
+            var loc = agent.state().location();
 
+            // GM gets tools to inspect the world — no pre-packaged data dump
             String systemPrompt = GameMasterPrompts.freeFormActionSystemPrompt();
-            String userPrompt = GameMasterPrompts.freeFormActionUserPrompt(
-                    agentId, archetype, description, creditBudget,
-                    experience, inventory, assets, spatial);
+            String userPrompt = String.format("""
+                    Agent %s (archetype: %s) at tile (%d,%d) wants to: %s
+                    Credit budget: %.0f
+
+                    Use your tools to inspect the agent, their surroundings, nearby agents, market conditions,
+                    and any other relevant state before determining the outcome. Ground your resolution in
+                    actual world state — do not invent agents, services, or conditions that don't exist.
+
+                    After inspecting, respond with the JSON resolution.
+                    """, agentId, archetype, loc.q(), loc.r(), description, creditBudget);
 
             commService.logThought(GM_ID, "Resolving free-form action from " + agentId + ": " + description,
                     Message.Channel.GM_INTERNAL, currentTick);
 
-            LlmResponse response = llmService.queryGameMaster(systemPrompt, userPrompt).join();
+            var request = com.measim.model.llm.LlmRequest.gameMasterWithTools(
+                    config.gameMasterModel(), systemPrompt, userPrompt, gmTools.allTools());
+
+            LlmResponse response = llmService.runToolConversation(
+                    request, gmTools::handleToolCall, 6).join();
+
             commService.logThought(GM_ID, response.content(), Message.Channel.GM_INTERNAL, currentTick);
 
             return parseFreeFormResolution(response.content(), agentId, description, creditBudget, currentTick);
@@ -242,20 +259,27 @@ public class GameMasterServiceImpl implements GameMasterService {
             return events;
         }
 
-        // Fire ALL novel action calls concurrently — no batching
+        // Fire ALL novel action calls concurrently with dedicated thread pool
+        // (avoids ForkJoinPool starvation from nested .join() calls in LLM requests)
         List<WorldEvent> events = java.util.Collections.synchronizedList(new ArrayList<>());
         System.out.printf("    [GM] Processing %d novel actions concurrently...%n", toProcess.size());
 
-        var futures = toProcess.stream()
-                .map(action -> java.util.concurrent.CompletableFuture.supplyAsync(() ->
-                        adjudicateOneNovelAction(action, currentTick, worldState)))
-                .toList();
+        var executor = java.util.concurrent.Executors.newFixedThreadPool(
+                Math.min(toProcess.size(), 50));
+        try {
+            var futures = toProcess.stream()
+                    .map(action -> java.util.concurrent.CompletableFuture.supplyAsync(() ->
+                            adjudicateOneNovelAction(action, currentTick, worldState), executor))
+                    .toList();
 
-        java.util.concurrent.CompletableFuture.allOf(futures.toArray(java.util.concurrent.CompletableFuture[]::new)).join();
+            java.util.concurrent.CompletableFuture.allOf(futures.toArray(java.util.concurrent.CompletableFuture[]::new)).join();
 
-        for (var future : futures) {
-            WorldEvent event = future.join();
-            if (event != null) { events.add(event); logEvent(event); }
+            for (var future : futures) {
+                WorldEvent event = future.join();
+                if (event != null) { events.add(event); logEvent(event); }
+            }
+        } finally {
+            executor.shutdown();
         }
         return events;
     }
@@ -266,11 +290,26 @@ public class GameMasterServiceImpl implements GameMasterService {
             return adjudicateNovelActionDeterministic(action, currentTick);
         }
         try {
-            String experience = getAgentExperience(action.agentId());
-            LlmResponse response = llmService.queryGameMaster(
-                    GameMasterPrompts.novelActionSystemPrompt(),
-                    GameMasterPrompts.novelActionUserPrompt(action, worldState, experience)
-            ).join();
+            // GM gets tools to inspect world state before resolving the novel action
+            String systemPrompt = GameMasterPrompts.novelActionSystemPrompt();
+            String userPrompt = String.format("""
+                    Agent %s (archetype: %s) is attempting: %s
+                    Action type: %s
+                    Credit stake: %.0f
+                    Tick: %d
+
+                    Use your tools to inspect the agent, their location, nearby agents and infrastructure,
+                    and market conditions as needed. Ground your resolution in actual world state.
+
+                    After inspecting, respond with the JSON resolution.
+                    """, action.agentId(), action.archetypeName(), action.description(),
+                    action.type(), action.creditStake(), currentTick);
+
+            var request = com.measim.model.llm.LlmRequest.gameMasterWithTools(
+                    config.gameMasterModel(), systemPrompt, userPrompt, gmTools.allTools());
+
+            LlmResponse response = llmService.runToolConversation(
+                    request, gmTools::handleToolCall, 6).join();
 
             return parseNovelActionResponse(response.content(), action, currentTick);
         } catch (Exception e) {
@@ -328,29 +367,35 @@ public class GameMasterServiceImpl implements GameMasterService {
         }
 
         try {
-            Tile locationTile = worldDao.getTile(proposal.location());
-            Tile connectionTile = proposal.connectTo() != null ? worldDao.getTile(proposal.connectTo()) : null;
+            var loc = proposal.location();
 
+            // GM gets tools to inspect tile, agent, surroundings before evaluating
             String systemPrompt = GameMasterPrompts.infrastructureEvalSystemPrompt();
-            String experience = getAgentExperience(proposal.agentId());
-            var agent = agentDao.getAgent(proposal.agentId());
-            String agentInventory = agent != null ? agent.state().inventory().toString() : "{}";
-            String reserveHoldings = reserveService.getReserve().holdings().toString();
+            String userPrompt = String.format("""
+                    Agent %s proposes building: "%s"
+                    Purpose: %s
+                    Materials: %s
+                    Location: (%d,%d)%s
+                    Budget: %.0f credits
 
-            String userPrompt = GameMasterPrompts.infrastructureEvalUserPrompt(
-                    proposal, techRegistry.getAllTechNodes(), infraDao.getAllTypes(),
-                    locationTile != null ? locationTile.terrain().name() : "UNKNOWN",
-                    connectionTile != null ? connectionTile.terrain().name() : "N/A",
-                    experience, agentInventory, reserveHoldings);
+                    Use your tools to inspect the proposed location, the agent's capabilities and resources,
+                    nearby infrastructure (avoid duplicates), and any other relevant state.
+                    Then evaluate and respond with the JSON infrastructure type definition.
+                    """, proposal.agentId(), proposal.proposedName(), proposal.intendedPurpose(),
+                    proposal.proposedMaterials(), loc.q(), loc.r(),
+                    proposal.connectTo() != null ? String.format(" -> (%d,%d)", proposal.connectTo().q(), proposal.connectTo().r()) : "",
+                    proposal.creditBudget());
 
-            // Log GM's thinking
             commService.logThought(GM_ID,
                     "Evaluating infrastructure proposal from " + proposal.agentId() + ": " + proposal.proposedName(),
                     Message.Channel.GM_INTERNAL, currentTick);
 
-            LlmResponse response = llmService.queryGameMaster(systemPrompt, userPrompt).join();
+            var request = com.measim.model.llm.LlmRequest.gameMasterWithTools(
+                    config.gameMasterModel(), systemPrompt, userPrompt, gmTools.allTools());
 
-            // Log the full GM reasoning
+            LlmResponse response = llmService.runToolConversation(
+                    request, gmTools::handleToolCall, 4).join();
+
             commService.logThought(GM_ID, response.content(), Message.Channel.GM_INTERNAL, currentTick);
 
             return parseInfrastructureEvaluation(response.content(), proposal, currentTick);
@@ -534,10 +579,10 @@ public class GameMasterServiceImpl implements GameMasterService {
             return generateWorldEventsDeterministic(currentTick, worldState);
         }
         try {
-            // World events use Opus for better holistic reasoning
+            // Routine world events use Sonnet. Opus reserved for yearly coherence audit only.
             String tileSummaries = buildNotableTileSummaries();
             LlmResponse response = llmService.queryGameMasterWithModel(
-                    config.complexModel(),
+                    config.gameMasterModel(),
                     GameMasterPrompts.worldEventSystemPrompt(),
                     GameMasterPrompts.worldEventUserPrompt(worldState, tileSummaries)
             ).join();

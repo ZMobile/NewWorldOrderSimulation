@@ -10,8 +10,8 @@ import java.util.*;
 @Singleton
 public class ServiceDaoImpl implements ServiceDao {
 
-    private final Map<String, AgentServiceType> types = new LinkedHashMap<>();
-    private final Map<String, ServiceInstance> instances = new LinkedHashMap<>();
+    private final Map<String, AgentServiceType> types = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, ServiceInstance> instances = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Override public void registerType(AgentServiceType type) { types.put(type.id(), type); }
     @Override public Optional<AgentServiceType> getType(String id) { return Optional.ofNullable(types.get(id)); }
@@ -33,6 +33,6 @@ public class ServiceDaoImpl implements ServiceDao {
     }
     @Override public List<ServiceInstance> getInstancesNear(HexCoord location, int radius) {
         return instances.values().stream()
-                .filter(i -> i.isActive() && i.location().distanceTo(location) <= radius).toList();
+                .filter(i -> i.isActive() && i.location() != null && i.location().distanceTo(location) <= radius).toList();
     }
 }

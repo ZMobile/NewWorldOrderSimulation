@@ -6,6 +6,9 @@ import com.measim.model.agent.AgentAction;
 import com.measim.model.economy.ItemType;
 import com.measim.model.world.HexCoord;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Parses LLM JSON responses into concrete AgentAction instances.
  */
@@ -63,6 +66,24 @@ public final class LlmResponseParser {
                 case "FREE_FORM" -> new AgentAction.FreeFormAction(
                         root.path("description").asText(""),
                         root.path("budget").asDouble(100));
+                case "OFFER_TRADE" -> {
+                    Map<ItemType, Integer> offered = new java.util.HashMap<>();
+                    Map<ItemType, Integer> requested = new java.util.HashMap<>();
+                    var offeredNode = root.path("itemsOffered");
+                    if (offeredNode.isObject()) offeredNode.fields().forEachRemaining(
+                            e -> offered.put(ItemType.custom(e.getKey()), e.getValue().asInt()));
+                    var requestedNode = root.path("itemsRequested");
+                    if (requestedNode.isObject()) requestedNode.fields().forEachRemaining(
+                            e -> requested.put(ItemType.custom(e.getKey()), e.getValue().asInt()));
+                    yield new AgentAction.OfferTrade(
+                            root.has("targetAgent") ? root.path("targetAgent").asText() : null,
+                            offered, requested,
+                            root.path("creditsOffered").asDouble(0),
+                            root.path("creditsRequested").asDouble(0),
+                            root.path("message").asText(""));
+                }
+                case "ACCEPT_TRADE" -> new AgentAction.AcceptTrade(root.path("offerId").asText());
+                case "REJECT_TRADE" -> new AgentAction.RejectTrade(root.path("offerId").asText());
                 default -> new AgentAction.Idle();
             };
         } catch (Exception e) {

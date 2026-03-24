@@ -15,5 +15,6 @@ public interface PropertyService {
     void processRentPayments(int currentTick);
     int availableSlots(HexCoord tile);
     List<TileClaim> getAgentProperties(String agentId);
+    List<TileClaim> getClaimsOnTile(HexCoord tile);
     double getClaimBasePrice(HexCoord tile);
 }

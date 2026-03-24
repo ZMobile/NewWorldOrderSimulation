@@ -38,18 +38,21 @@ public class DecisionPhase implements TickPhase {
     private final WorldDao worldDao;
     private final AgentDecisionService decisionService;
     private final LlmService llmService;
+    private final com.measim.service.trade.TradeService tradeService;
     private final SimulationConfig config;
     private final Map<String, AgentAction> pendingActions = new HashMap<>();
 
     @Inject
     public DecisionPhase(AgentDao agentDao, MarketDao marketDao, WorldDao worldDao,
                           AgentDecisionService decisionService, LlmService llmService,
+                          com.measim.service.trade.TradeService tradeService,
                           SimulationConfig config) {
         this.agentDao = agentDao;
         this.marketDao = marketDao;
         this.worldDao = worldDao;
         this.decisionService = decisionService;
         this.llmService = llmService;
+        this.tradeService = tradeService;
         this.config = config;
     }
 
@@ -62,9 +65,20 @@ public class DecisionPhase implements TickPhase {
         Map<ItemType, Double> prices = buildPriceSnapshot();
 
         // Tier 1: deterministic decisions for ALL agents
+        long t1Start = System.currentTimeMillis();
         for (var agent : agentDao.getAllAgents()) {
             pendingActions.put(agent.id(), decisionService.decideStrategicAction(agent, prices, currentTick));
         }
+        long t1Elapsed = System.currentTimeMillis() - t1Start;
+
+        // Summarize Tier 1 action distribution
+        Map<String, Integer> actionCounts = new java.util.LinkedHashMap<>();
+        for (var action : pendingActions.values()) {
+            String name = action.getClass().getSimpleName();
+            actionCounts.merge(name, 1, Integer::sum);
+        }
+        System.out.printf("    [Decision] Tier 1 (%dms): %s%n", t1Elapsed, actionCounts);
+        System.out.flush();
 
         // Tier 2: LLM escalation for eligible agents (replaces their Tier 1 action)
         if (llmService.isAvailable()) {
@@ -80,14 +94,30 @@ public class DecisionPhase implements TickPhase {
 
                 System.out.printf("    [Decision] Escalating %d/%d agents to LLM...%n",
                         toEscalate.size(), agentDao.getAgentCount());
+                System.out.flush();
 
                 // Fire ALL LLM calls concurrently — no batching, no caps
+                long llmStart = System.currentTimeMillis();
                 var futures = toEscalate.stream()
                         .map(agent -> {
                             String spatial = buildSpatialContext(agent);
                             String decision = "Strategic decision for tick " + currentTick;
+                            // Build trade context: pending offers + visible open offers
+                            var incoming = tradeService.getIncomingOffers(agent.id());
+                            var visible = tradeService.getVisibleOpenOffers(agent.id());
+                            StringBuilder tradeSb = new StringBuilder();
+                            if (!incoming.isEmpty()) {
+                                tradeSb.append("Direct offers to you:\n");
+                                for (var o : incoming) tradeSb.append("  ").append(o.id()).append(": ").append(o.summary()).append("\n");
+                            }
+                            if (!visible.isEmpty()) {
+                                tradeSb.append("Open offers nearby:\n");
+                                for (var o : visible) tradeSb.append("  ").append(o.id()).append(": ").append(o.summary()).append("\n");
+                            }
+                            String tradeCtx = tradeSb.isEmpty() ? "None" : tradeSb.toString();
+
                             return Map.entry(agent.id(),
-                                    llmService.escalateDecision(agent, spatial, decision, currentTick));
+                                    llmService.escalateDecision(agent, spatial, decision, currentTick, tradeCtx));
                         })
                         .toList();
 
@@ -95,12 +125,17 @@ public class DecisionPhase implements TickPhase {
                         .map(Map.Entry::getValue)
                         .toArray(CompletableFuture[]::new)).join();
 
+                int llmActions = 0;
                 for (var entry : futures) {
                     AgentAction llmAction = entry.getValue().join();
                     if (!(llmAction instanceof AgentAction.Idle)) {
                         pendingActions.put(entry.getKey(), llmAction);
+                        llmActions++;
                     }
                 }
+                System.out.printf("    [Decision] LLM done (%dms): %d/%d produced actions%n",
+                        System.currentTimeMillis() - llmStart, llmActions, toEscalate.size());
+                System.out.flush();
             }
         }
     }

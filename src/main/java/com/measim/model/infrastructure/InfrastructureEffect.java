@@ -26,6 +26,8 @@ public record InfrastructureEffect(
         PRODUCTION_SPEED_BOOST,     // Multiplier on production speed
         ENVIRONMENTAL_REMEDIATION,  // Boosts natural recovery rate
         STORAGE_CAPACITY,           // Increases how much a tile can stockpile
+        COMMUNICATION_RANGE,        // Extends agent communication range (magnitude = tiles)
+        MARKETPLACE,                // Makes this tile a public trading post (open offers visible)
         CUSTOM                      // Game Master defined effect
     }
 

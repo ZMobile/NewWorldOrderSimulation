@@ -19,4 +19,8 @@ public class Agent {
     public MemoryStream memory() { return memory; }
     public String id() { return identity.id(); }
     public String name() { return identity.name(); }
+
+    public java.util.List<MemoryEntry> recentMemories(int count) {
+        return memory.getRecent(count);
+    }
 }

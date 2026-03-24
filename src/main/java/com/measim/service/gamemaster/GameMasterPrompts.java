@@ -38,6 +38,49 @@ public final class GameMasterPrompts {
             Your internal reasoning goes to the GM_INTERNAL channel, never to agents.
             """;
 
+    /**
+     * Tech tree consistency rules — included in all GM prompts that resolve actions or evaluate proposals.
+     */
+    private static final String TECH_TREE_CONSISTENCY = """
+
+            CRITICAL — TECHNOLOGY PREREQUISITES:
+            You MUST verify technology prerequisites before approving anything.
+            No online marketplace without internet infrastructure. No phone communication without
+            telecommunications. No advanced manufacturing without basic metallurgy. No electric
+            vehicles without both electricity grid and automotive technology.
+            Use your tools to check what tech exists before resolving any action.
+            Technology must form a connected chain — no leaps over missing prerequisites.
+            """;
+
+    /**
+     * GM refusal rules — the GM is a physics engine, not a market participant.
+     */
+    private static final String GM_REFUSAL = """
+
+            CRITICAL — ACTIONS OUTSIDE GM JURISDICTION:
+            REFUSE actions that are not your jurisdiction:
+            - Trade/buy/sell between agents is NOT your job — agents must find buyers/sellers themselves
+            - You are a physics engine and referee, NOT a market participant or facilitator
+            - If an agent asks you to sell their goods, REFUSE and explain they must find a buyer
+            - If an action requires another agent's consent, REFUSE — the agent must negotiate directly
+            - Matchmaking, brokering, or facilitating deals between agents is NOT your role
+            Respond with {"success": false, "narrative": "Reason this requires agent-to-agent interaction, not GM"} for refused actions.
+            """;
+
+    /**
+     * Physical consistency rules — everything must connect to real infrastructure and tech.
+     */
+    private static final String PHYSICAL_CONSISTENCY = """
+
+            CRITICAL — PHYSICAL CONSISTENCY:
+            Everything must be physically consistent with available technology and infrastructure:
+            - Communication range is limited by technology (no phones = adjacent tiles only, radio = wider, internet = global)
+            - Markets/exchanges require physical infrastructure (building, stalls, logistics)
+            - Services require appropriate infrastructure to operate
+            - No technology leaps — everything must connect to existing tech tree
+            - Transport requires roads/vehicles, power requires generation/grid, etc.
+            """;
+
     // ========== RESEARCH ADJUDICATION ==========
 
     public static String researchSystemPrompt() {
@@ -58,7 +101,7 @@ public final class GameMasterPrompts {
                 If succeeds: {"success": true, "name": "...", "description": "...", "category": 1-4, "inputs": [...], "outputs": [...], "pollutionOutput": N.N, "productionTimeTicks": N, "prerequisiteTechs": [...], "effectType": null or "...", "effectMagnitude": null or N.N, "risks": [{"name":"...","category":"TECHNOLOGICAL|ENVIRONMENTAL|...","baseProbability":0.01,"agingRate":0.02,"minSeverity":0.1,"maxSeverity":0.5,"canCascade":false}], "byproducts": [{"name":"...","type":"AIR_POLLUTION|WATER_CONTAMINATION|CHEMICAL|...","visibility":"VISIBLE|DELAYED|HIDDEN|CUMULATIVE","baseAmountPerTick":0.01,"diffusionRadius":2,"accumulationRate":0.5}]}
                 If fails: {"success": false, "reason": "..."}
                 Only output JSON.
-                """ + INFORMATION_BOUNDARY;
+                """ + TECH_TREE_CONSISTENCY + INFORMATION_BOUNDARY;
     }
 
     public static String researchUserPrompt(ResearchProposal proposal,
@@ -85,18 +128,25 @@ public final class GameMasterPrompts {
                 An agent has described a free-form action in natural language.
                 Your job: translate this into concrete game mechanics.
 
+                You have TOOLS to inspect the actual simulation state. USE THEM before resolving.
+                Do NOT invent or hallucinate agents, services, infrastructure, or market conditions.
+                Every entity you reference in your narrative must exist in the simulation.
+
+                WORKFLOW:
+                1. Inspect the acting agent (credits, inventory, experience, traits)
+                2. Inspect their tile and nearby area (resources, agents, infrastructure)
+                3. Check market conditions if relevant
+                4. Resolve the action based on ACTUAL state
+
                 The agent may reference their own infrastructure, services, inventory,
                 property claims, work relations, or combine multiple strategies.
                 Determine what mechanically happens: what resources are consumed,
                 what is created/modified, what it costs, what the risks and byproducts are.
 
-                If the action references specific owned assets (infrastructure, services),
-                factor in their condition and the agent's experience with them.
-
-                Respond with JSON:
+                After using tools to gather context, respond with JSON:
                 {
                   "success": true/false,
-                  "narrative": "What happens (2-3 sentences)",
+                  "narrative": "What happens (2-3 sentences, grounded in real state)",
                   "creditCost": N.N,
                   "creditGain": N.N,
                   "satisfactionChange": N.N,
@@ -107,24 +157,7 @@ public final class GameMasterPrompts {
                   "risks": [{"name":"...","category":"...","baseProbability":0.01,"agingRate":0.02,"minSeverity":0.1,"maxSeverity":0.5,"canCascade":false}],
                   "byproducts": [{"name":"...","type":"...","visibility":"VISIBLE|DELAYED|HIDDEN|CUMULATIVE","baseAmountPerTick":0.01}]
                 }
-                """ + INFORMATION_BOUNDARY;
-    }
-
-    public static String freeFormActionUserPrompt(String agentId, String archetype,
-                                                    String description, double creditBudget,
-                                                    String experience, String inventorySummary,
-                                                    String ownedAssets, String spatialContext) {
-        return String.format("""
-                Agent: %s (archetype: %s)
-                Action: %s
-                Credit budget: %.0f
-                Agent experience: %s
-                (More experience in relevant domain = better outcomes, lower risk)
-                Inventory: %s
-                Owned assets: %s
-                Location context: %s
-                """, agentId, archetype, description, creditBudget,
-                experience, inventorySummary, ownedAssets, spatialContext);
+                """ + GM_REFUSAL + TECH_TREE_CONSISTENCY + PHYSICAL_CONSISTENCY + INFORMATION_BOUNDARY;
     }
 
     // ========== NOVEL AGENT ACTIONS ==========
@@ -134,6 +167,16 @@ public final class GameMasterPrompts {
                 You are the Game Master (physics engine/DM) for MeaSim, an economic society simulator.
                 An agent is attempting a novel action outside the deterministic rules.
                 You evaluate feasibility and determine outcomes. You do NOT invent solutions for agents.
+
+                You have TOOLS to inspect actual simulation state. USE THEM before resolving.
+                Do NOT invent or hallucinate agents, services, infrastructure, or conditions.
+                Every entity you reference must exist in the simulation.
+
+                WORKFLOW:
+                1. Inspect the agent (inspect_agent) to see their actual state
+                2. Inspect their location and surroundings (inspect_tile, list_nearby_agents)
+                3. Check relevant infrastructure, services, market, or contracts as needed
+                4. Resolve based on ACTUAL state — not plausible fiction
 
                 WORLD FEATURES:
                 - Agents own property claims (tile slots), hire via work relations, create services
@@ -164,7 +207,7 @@ public final class GameMasterPrompts {
                   "byproducts": [{"name":"...","type":"AIR_POLLUTION|WATER_CONTAMINATION|SOIL_DEGRADATION|NOISE|WASTE|CHEMICAL|SOCIAL|CUSTOM","visibility":"VISIBLE|DELAYED|HIDDEN|CUMULATIVE","baseAmountPerTick":0.01,"diffusionRadius":2,"accumulationRate":0.5}]
                 }
                 Only output JSON.
-                """ + INFORMATION_BOUNDARY;
+                """ + GM_REFUSAL + TECH_TREE_CONSISTENCY + PHYSICAL_CONSISTENCY + INFORMATION_BOUNDARY;
     }
 
     public static String novelActionUserPrompt(NovelAction action, WorldState worldState,
@@ -174,31 +217,14 @@ public final class GameMasterPrompts {
                 Action type: %s
                 Description: %s
                 Credit stake: %.0f
-                Agent experience: %s
-                (More experience in relevant domain = better outcomes, lower risk)
-                Current world year: %d
 
-                World context:
-                  Avg environmental health: %.2f
-                  Gini coefficient: %.3f
-                  Avg satisfaction: %.2f
-                  Total agents: %d, Total robots: %d
-                  UBI pool: %.0f
-                  Crisis tiles: %d
-                  Recent events: %s
+                Use your tools to inspect the agent and world state before resolving.
+                Check the agent's actual inventory, credits, experience, location, and surroundings.
+                Higher experience in a relevant domain = better outcomes, lower risk.
                 """.formatted(
                 action.agentId(), action.archetypeName(),
                 action.type(), action.description(),
-                action.creditStake(),
-                agentExperience,
-                worldState.currentTick() / worldState.ticksPerYear(),
-                worldState.averageEnvironmentalHealth(),
-                worldState.giniCoefficient(),
-                worldState.averageSatisfaction(),
-                worldState.totalAgents(), worldState.totalRobots(),
-                worldState.ubiPoolSize(),
-                worldState.crisisTileCount(),
-                worldState.recentEvents().isEmpty() ? "None" : String.join("; ", worldState.recentEvents())
+                action.creditStake()
         );
     }
 
@@ -236,7 +262,7 @@ public final class GameMasterPrompts {
                 }
                 Return {"events": []} if nothing should happen this tick. MOST ticks should be empty.
                 Only output JSON.
-                """ + INFORMATION_BOUNDARY;
+                """ + TECH_TREE_CONSISTENCY + INFORMATION_BOUNDARY;
     }
 
     public static String worldEventUserPrompt(WorldState state, String notableTiles) {
@@ -314,7 +340,7 @@ public final class GameMasterPrompts {
                 }
                 environmentChange values are deltas (-0.1 = degrade, +0.05 = improve). null if not tile-specific.
                 Only output JSON.
-                """ + INFORMATION_BOUNDARY;
+                """ + TECH_TREE_CONSISTENCY + INFORMATION_BOUNDARY;
     }
 
     // ========== INFRASTRUCTURE EVALUATION ==========
@@ -323,12 +349,14 @@ public final class GameMasterPrompts {
         return """
                 You are the Game Master for MeaSim. You are the PHYSICS ENGINE, not the architect.
                 An agent is proposing to build infrastructure. Your job:
-                1. Evaluate whether this is physically feasible given current tech and terrain
-                2. If feasible, set the NUMERICAL PROPERTIES: construction cost, maintenance cost,
+                1. Use your tools to inspect the proposed location, the agent, and surroundings
+                2. Evaluate whether this is physically feasible given current tech and terrain
+                3. If feasible, set the NUMERICAL PROPERTIES: construction cost, maintenance cost,
                    capacity, range, effects, environmental impact, degradation rate
-                3. If not feasible, explain why (missing tech, wrong terrain, violates physics)
-                4. If you need more information, ask a clarification question
+                4. If not feasible, explain why (missing tech, wrong terrain, violates physics)
 
+                You have TOOLS to inspect actual simulation state. USE THEM.
+                Check the tile terrain, existing infrastructure (avoid duplicates), agent resources.
                 YOU DO NOT INVENT SOLUTIONS. The agent proposes, you evaluate.
 
                 FIXED GAME RULES you must respect:
@@ -381,7 +409,7 @@ public final class GameMasterPrompts {
                 {"needsClarification": true, "question": "What do you need to know?"}
 
                 Only output JSON.
-                """ + INFORMATION_BOUNDARY;
+                """ + TECH_TREE_CONSISTENCY + PHYSICAL_CONSISTENCY + INFORMATION_BOUNDARY;
     }
 
     public static String infrastructureEvalUserPrompt(InfrastructureProposal proposal,
@@ -399,21 +427,13 @@ public final class GameMasterPrompts {
         sb.append("  Materials: ").append(proposal.proposedMaterials()).append("\n");
         sb.append("  Purpose: ").append(proposal.intendedPurpose()).append("\n");
         sb.append("  Budget: ").append(String.format("%.0f credits", proposal.creditBudget())).append("\n");
-        sb.append("  Location terrain: ").append(terrainAtLocation).append("\n");
+        sb.append("  Proposed location: (").append(proposal.location().q()).append(", ").append(proposal.location().r()).append(")\n");
         if (proposal.connectTo() != null) {
-            sb.append("  Connection target terrain: ").append(terrainAtConnection).append("\n");
-            sb.append("  Distance: ").append(proposal.location().distanceTo(proposal.connectTo())).append(" hexes\n");
+            sb.append("  Connection target: (").append(proposal.connectTo().q()).append(", ").append(proposal.connectTo().r()).append(")\n");
         }
-        sb.append("\nAgent experience: ").append(agentExperience).append("\n");
-        sb.append("Agent inventory: ").append(agentInventory).append("\n");
-        sb.append("\nReserve holdings (available at premium): ").append(reserveHoldings).append("\n");
-        sb.append("(Reserve charges 1.5-3x market rate. Reserve should NOT cover 100% of any resource.)\n");
-        sb.append("\nAvailable technology: ");
-        for (TechNode node : techTree) sb.append(node.name()).append(", ");
-        sb.append("\n\nExisting infrastructure in world: ");
-        if (existingInfra.isEmpty()) sb.append("None yet");
-        else for (var infra : existingInfra) sb.append(infra.name()).append(", ");
-        sb.append("\n");
+        sb.append("\nUse your tools to inspect the agent, the proposed tile, nearby infrastructure,\n");
+        sb.append("available technology, terrain, and reserve holdings before evaluating.\n");
+        sb.append("Check tech prerequisites — does the required technology exist for this proposal?\n");
         return sb.toString();
     }
 

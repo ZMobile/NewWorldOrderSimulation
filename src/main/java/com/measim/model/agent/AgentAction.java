@@ -30,4 +30,15 @@ public sealed interface AgentAction {
      * are too rigid. The deterministic pipeline still handles routine actions.
      */
     record FreeFormAction(String description, double creditBudget) implements AgentAction {}
+
+    /** Offer a trade to a specific agent or as an open offer. */
+    record OfferTrade(String targetAgentId, java.util.Map<com.measim.model.economy.ItemType, Integer> itemsOffered,
+                      java.util.Map<com.measim.model.economy.ItemType, Integer> itemsRequested,
+                      double creditsOffered, double creditsRequested, String message) implements AgentAction {}
+
+    /** Accept a pending trade offer. */
+    record AcceptTrade(String offerId) implements AgentAction {}
+
+    /** Reject a pending trade offer. */
+    record RejectTrade(String offerId) implements AgentAction {}
 }

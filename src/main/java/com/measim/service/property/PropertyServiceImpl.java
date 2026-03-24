@@ -128,6 +128,11 @@ public class PropertyServiceImpl implements PropertyService {
     }
 
     @Override
+    public List<TileClaim> getClaimsOnTile(HexCoord tile) {
+        return propertyDao.getClaimsOnTile(tile);
+    }
+
+    @Override
     public double getClaimBasePrice(HexCoord tile) {
         Tile t = worldDao.getTile(tile);
         if (t == null) return BASE_CLAIM_PRICE_PER_SLOT;

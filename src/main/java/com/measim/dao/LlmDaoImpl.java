@@ -16,8 +16,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.DoubleAdder;
 
@@ -39,15 +38,28 @@ public class LlmDaoImpl implements LlmDao {
     private final SimulationConfig config;
     private final ObjectMapper mapper = new ObjectMapper();
     private final HttpClient httpClient;
+    private final ExecutorService httpExecutor;
+    private final ScheduledExecutorService retryScheduler;
     private final DoubleAdder totalSpent = new DoubleAdder();
     private final AtomicInteger totalCalls = new AtomicInteger(0);
+    private final AtomicInteger activeCalls = new AtomicInteger(0);
     private final Map<String, CachedResponse> cache = new ConcurrentHashMap<>();
 
     @Inject
     public LlmDaoImpl(SimulationConfig config) {
         this.config = config;
+        // Dedicated thread pool for HTTP — avoids ForkJoinPool starvation
+        this.httpExecutor = Executors.newFixedThreadPool(100,
+                r -> { Thread t = new Thread(r, "llm-http"); t.setDaemon(true); return t; });
+        this.retryScheduler = Executors.newScheduledThreadPool(2,
+                r -> { Thread t = new Thread(r, "llm-retry"); t.setDaemon(true); return t; });
+        // Force HTTP/1.1 to avoid HTTP/2 "too many concurrent streams" limit.
+        // With 100+ concurrent requests (agent decisions + GM tool conversations),
+        // HTTP/2 multiplexing hits the server's per-connection stream cap.
         this.httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(30))
+                .executor(httpExecutor)
                 .build();
     }
 
@@ -85,8 +97,9 @@ public class LlmDaoImpl implements LlmDao {
             totalSpent.add(response.costUsd());
             int n = totalCalls.incrementAndGet();
             if (n % 10 == 0 || n <= 3) {
-                System.out.printf("      [LLM] Call #%d (%s) - $%.4f this call, $%.2f total%n",
-                        n, request.model(), response.costUsd(), totalSpent.sum());
+                System.out.printf("      [LLM] Call #%d (%s) - $%.4f this call, $%.2f total, %d active%n",
+                        n, request.model(), response.costUsd(), totalSpent.sum(), activeCalls.get());
+                System.out.flush();
             }
 
             if (config.cacheEnabled()) {
@@ -133,14 +146,30 @@ public class LlmDaoImpl implements LlmDao {
                 body.put("system", request.systemPrompt());
             }
 
+            // Serialize tools if present
+            if (request.hasTools()) {
+                ArrayNode toolsNode = body.putArray("tools");
+                for (var tool : request.tools()) {
+                    ObjectNode toolNode = toolsNode.addObject();
+                    toolNode.put("name", tool.name());
+                    toolNode.put("description", tool.description());
+                    toolNode.set("input_schema", mapper.valueToTree(tool.inputSchema()));
+                }
+            }
+
+            // Serialize messages with content blocks
             ArrayNode messages = body.putArray("messages");
             for (LlmRequest.Message msg : request.messages()) {
                 ObjectNode msgNode = messages.addObject();
                 msgNode.put("role", msg.role());
-                msgNode.put("content", msg.content());
+                serializeContentBlocks(msgNode, msg.contentBlocks());
             }
 
             String jsonBody = mapper.writeValueAsString(body);
+            int active = activeCalls.incrementAndGet();
+
+            // Scale timeout with request size — tool conversations accumulate large contexts
+            int timeoutSecs = request.hasTools() ? 90 : 60;
 
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(URI.create(config.apiBaseUrl() + "/v1/messages"))
@@ -148,28 +177,46 @@ public class LlmDaoImpl implements LlmDao {
                     .header("x-api-key", config.apiKey())
                     .header("anthropic-version", ANTHROPIC_VERSION)
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                    .timeout(Duration.ofSeconds(30))
+                    .timeout(Duration.ofSeconds(timeoutSecs))
                     .build();
 
             return httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
                     .thenCompose(httpResponse -> {
+                        activeCalls.decrementAndGet();
                         int status = httpResponse.statusCode();
                         // Retry on rate limit (429) or server error (5xx)
                         if ((status == 429 || status >= 500) && retriesLeft > 0) {
                             int delay = status == 429 ? 5000 : 2000;
                             System.out.printf("      [LLM] %d error, retrying in %ds (%d retries left)%n",
                                     status, delay / 1000, retriesLeft);
-                            try { Thread.sleep(delay); } catch (InterruptedException ignored) {}
-                            return callApiWithRetry(request, retriesLeft - 1);
+                            // Non-blocking delay using scheduled executor
+                            CompletableFuture<LlmResponse> delayed = new CompletableFuture<>();
+                            retryScheduler.schedule(() ->
+                                    callApiWithRetry(request, retriesLeft - 1)
+                                            .thenAccept(delayed::complete)
+                                            .exceptionally(ex -> { delayed.completeExceptionally(ex); return null; }),
+                                    delay, java.util.concurrent.TimeUnit.MILLISECONDS);
+                            return delayed;
                         }
                         return CompletableFuture.completedFuture(parseResponse(httpResponse, request.model()));
                     })
                     .exceptionally(ex -> {
+                        activeCalls.decrementAndGet();
                         if (retriesLeft > 0) {
                             System.out.printf("      [LLM] Network error, retrying (%d left): %s%n",
                                     retriesLeft, ex.getMessage());
-                            try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
-                            return callApiWithRetry(request, retriesLeft - 1).join();
+                            // Non-blocking retry via scheduled executor
+                            try {
+                                CompletableFuture<LlmResponse> delayed = new CompletableFuture<>();
+                                retryScheduler.schedule(() ->
+                                        callApiWithRetry(request, retriesLeft - 1)
+                                                .thenAccept(delayed::complete)
+                                                .exceptionally(ex2 -> { delayed.completeExceptionally(ex2); return null; }),
+                                        2000, java.util.concurrent.TimeUnit.MILLISECONDS);
+                                return delayed.join(); // OK here: runs on httpExecutor, not ForkJoinPool
+                            } catch (Exception e2) {
+                                // fallthrough
+                            }
                         }
                         return new LlmResponse("[LLM error after retries: " + ex.getMessage() + "]",
                                 0, 0, 0, request.model(), false);
@@ -182,6 +229,42 @@ public class LlmDaoImpl implements LlmDao {
         }
     }
 
+    /**
+     * Serialize content blocks into a message node.
+     * Simple text-only messages use "content": "string".
+     * Mixed content (tool_use, tool_result) uses "content": [array of blocks].
+     */
+    private void serializeContentBlocks(ObjectNode msgNode, List<LlmRequest.ContentBlock> blocks) {
+        boolean hasNonText = blocks.stream().anyMatch(b -> b.type() != LlmRequest.ContentBlock.Type.TEXT);
+        if (!hasNonText && blocks.size() == 1) {
+            // Simple string content
+            msgNode.put("content", blocks.getFirst().text());
+        } else {
+            // Array of content blocks
+            ArrayNode contentArray = msgNode.putArray("content");
+            for (var block : blocks) {
+                ObjectNode blockNode = contentArray.addObject();
+                switch (block.type()) {
+                    case TEXT -> {
+                        blockNode.put("type", "text");
+                        blockNode.put("text", block.text());
+                    }
+                    case TOOL_USE -> {
+                        blockNode.put("type", "tool_use");
+                        blockNode.put("id", block.toolUseId());
+                        blockNode.put("name", block.toolName());
+                        blockNode.set("input", mapper.valueToTree(block.toolInput()));
+                    }
+                    case TOOL_RESULT -> {
+                        blockNode.put("type", "tool_result");
+                        blockNode.put("tool_use_id", block.toolUseId());
+                        blockNode.put("content", block.toolResult());
+                    }
+                }
+            }
+        }
+    }
+
     private LlmResponse parseResponse(HttpResponse<String> httpResponse, String model) {
         try {
             if (httpResponse.statusCode() != 200) {
@@ -191,13 +274,23 @@ public class LlmDaoImpl implements LlmDao {
             }
 
             JsonNode root = mapper.readTree(httpResponse.body());
-            String content = "";
+            String stopReason = root.path("stop_reason").asText("end_turn");
+
+            // Parse all content blocks
+            String textContent = "";
+            List<LlmResponse.ToolUseBlock> toolBlocks = new ArrayList<>();
             JsonNode contentArray = root.get("content");
             if (contentArray != null && contentArray.isArray()) {
                 for (JsonNode block : contentArray) {
-                    if ("text".equals(block.path("type").asText())) {
-                        content = block.path("text").asText();
-                        break;
+                    String type = block.path("type").asText();
+                    if ("text".equals(type)) {
+                        textContent = block.path("text").asText();
+                    } else if ("tool_use".equals(type)) {
+                        String id = block.path("id").asText();
+                        String name = block.path("name").asText();
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> input = mapper.convertValue(block.get("input"), Map.class);
+                        toolBlocks.add(new LlmResponse.ToolUseBlock(id, name, input));
                     }
                 }
             }
@@ -209,17 +302,39 @@ public class LlmDaoImpl implements LlmDao {
             double costIn = inputTokens * COST_PER_INPUT_TOKEN.getOrDefault(model, 3.0 / 1_000_000);
             double costOut = outputTokens * COST_PER_OUTPUT_TOKEN.getOrDefault(model, 15.0 / 1_000_000);
 
-            return new LlmResponse(content, inputTokens, outputTokens, costIn + costOut, model, false);
+            return new LlmResponse(textContent, inputTokens, outputTokens, costIn + costOut,
+                    model, false, stopReason, toolBlocks);
         } catch (Exception e) {
             return new LlmResponse("[Parse error: " + e.getMessage() + "]", 0, 0, 0, model, false);
         }
     }
 
     private double estimateCost(LlmRequest request) {
-        // Rough estimate: ~500 input tokens, ~300 output tokens for agent decisions
-        int estInput = request.purpose() == LlmRequest.RequestPurpose.GAME_MASTER_ADJUDICATION ? 2000 : 500;
-        int estOutput = request.purpose() == LlmRequest.RequestPurpose.GAME_MASTER_ADJUDICATION ? 1000 : 300;
-        double costIn = estInput * COST_PER_INPUT_TOKEN.getOrDefault(request.model(), 3.0 / 1_000_000);
+        // Base estimates per call
+        int estInput, estOutput;
+        if (request.purpose() == LlmRequest.RequestPurpose.GAME_MASTER_ADJUDICATION) {
+            estInput = 2000;
+            estOutput = 1000;
+        } else {
+            estInput = 500;
+            estOutput = 300;
+        }
+
+        // Tool conversations cost more: each turn's context grows as tool results accumulate.
+        // Estimate ~4 turns average, with growing input per turn: turns 1-4 input roughly 1x,2x,3x,4x.
+        // Total input ~ 10x base, total output ~ 4x base.
+        if (request.hasTools()) {
+            estInput *= 4;  // average across expected turns (context grows each turn)
+            estOutput *= 3; // multiple output turns
+        }
+
+        // Account for actual message size if this is a continuation (later turns)
+        int messageChars = request.messages().stream()
+                .mapToInt(m -> m.content().length())
+                .sum();
+        int actualInputTokens = Math.max(estInput, messageChars / 4); // ~4 chars per token
+
+        double costIn = actualInputTokens * COST_PER_INPUT_TOKEN.getOrDefault(request.model(), 3.0 / 1_000_000);
         double costOut = estOutput * COST_PER_OUTPUT_TOKEN.getOrDefault(request.model(), 15.0 / 1_000_000);
         return costIn + costOut;
     }

@@ -75,6 +75,10 @@ public class ServiceModule extends AbstractModule {
         bind(PropertyService.class).to(PropertyServiceImpl.class).in(Singleton.class);
         bind(ContractService.class).to(ContractServiceImpl.class).in(Singleton.class);
 
+        // Trade and communication range
+        bind(com.measim.service.trade.TradeService.class).to(com.measim.service.trade.TradeServiceImpl.class).in(Singleton.class);
+        bind(com.measim.service.trade.CommunicationRangeService.class).to(com.measim.service.trade.CommunicationRangeServiceImpl.class).in(Singleton.class);
+
         // Governance services
         bind(GovernanceService.class).to(GovernanceServiceImpl.class).in(Singleton.class);
 

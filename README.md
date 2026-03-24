@@ -120,7 +120,7 @@ You don't deploy a new operating system to production without testing it. MeaSim
 - **Hexagonal tile world** with terrain, resources, environmental health, and pollution diffusion
 - **200-500 autonomous agents** across 12 personality archetypes (Optimizer, Entrepreneur, Exploiter, Free Rider, Philanthropist, etc.)
 - **Complete MEAS scoring engine** with all five axes and exact spec formulas
-- **Order-book markets** with production chains, trade, and credit flow
+- **Proximity-based trade** — no built-in exchange; trade is agent-to-agent or through agent-created marketplace services
 - **Robot labor** with configurable automation curves
 - **Multi-government jurisdictions** with different MEAS parameters, enabling direct policy comparison
 - **Agent migration** between jurisdictions based on satisfaction
@@ -181,6 +181,7 @@ MeaSim includes a Game Master LLM (Claude) that acts as the simulation's "Dungeo
 - **Novel agent actions**: Every archetype can attempt things outside the deterministic rules — the Artisan creates unique products, the Politician builds coalitions, the Exploiter tries novel gaming strategies. The GM adjudicates outcomes.
 - **World coherence audits**: Catches inconsistencies (e.g., high inequality but high satisfaction is incoherent) and issues corrections
 - **Research adjudication**: When agents invest in R&D, the GM determines what they discover within physical constraints (conservation laws, tech prerequisites, balance bounds)
+- **Tool-grounded decisions**: The GM inspects tiles, agents, markets, infrastructure, and contracts via structured tool calls before making any adjudication — no hallucinated world state
 
 When no LLM API key is configured, everything falls back to deterministic probability-based systems — the simulation runs fully without external dependencies.
 
@@ -211,7 +212,7 @@ Layered architecture: **model → dao → service → ui**
 com.measim
 ├── model/                Pure data classes
 │   ├── world/            HexCoord, HexGrid, Tile, Terrain, Environment
-│   ├── economy/          Resources, Products, Orders, Transactions, OrderBook
+│   ├── economy/          Resources, Products, Orders, Transactions
 │   ├── scoring/          ScoreVector, ModifierSet, AuditEntry, SectorBaseline
 │   ├── agent/            Agent, State, Identity, 18 Archetypes, Memory, Actions
 │   ├── gamemaster/       Discoveries, TechTree, WorldEvents, NovelActions, InfrastructureProposals
@@ -257,8 +258,11 @@ The GM is the simulation's DM. Crucially:
 - **Agents propose solutions** (creative agency belongs to agents)
 - **GM evaluates feasibility** and sets numerical properties (costs, capacity, risks)
 - **GM never invents solutions** for agents — it only determines reality
+- **GM has world-inspection tools** — `inspect_tile`, `inspect_agent`, `list_nearby_agents`, `query_market`, `list_infrastructure`, `list_services`, `query_contracts`, `query_property_claims`, `get_world_summary`. It uses multi-turn tool conversations to ground every decision in actual world state rather than relying on context summaries.
 - **All GM reasoning is observable** via the communication log
 - **Multi-turn conversations** — agents can counter-propose, GM can ask for clarification
+- **GM refuses out-of-jurisdiction requests** — it will not facilitate trades, buy/sell goods, or act as a market participant. It is strictly a physics engine and referee.
+- **Tech tree consistency** — the GM enforces technology prerequisites for all proposals. No skipping steps; everything must connect to the existing tech tree.
 
 Everything the GM creates comes with a **risk profile**: what could go wrong, how probability evolves over time, and what cascading effects a failure would have.
 
@@ -329,17 +333,17 @@ Service categories: financial, logistics, healthcare, education, legal, security
 | 1 | Perception | No | Agents observe environment, update risk perceptions from events |
 | 2 | Decision | **Tier 1+2** | Deterministic for all agents, then LLM escalation for eligible agents (20-50% per tick) |
 | 3 | Action | Partial | Economic pipeline (consume→extract→produce→sell→buy→hire) + strategic action + GM eval |
-| 4 | Market | No | Order books match, MEAS modifiers applied, credits flow |
+| 4 | Market | No | Proximity-based trades resolve, MEAS modifiers applied, credits flow |
 | 5 | Contracts | No | Wages paid, rent collected, service subscriptions, breach detection |
 | 6 | Scoring | No | Score vectors recomputed, modifiers updated, audit trail |
 | 7 | UBI | No | Credits distributed from pool to all agents |
 | 8 | Governance | Partial | Proposals, votes, disputes |
 | 9 | Environment | No | Pollution diffusion, recovery, infrastructure maintenance, externality processing |
 | 10 | Risk | Partial | Deterministic probability check → GM adjudicates triggered risks → cascades |
-| 11 | Events | **Opus** | GM: research, novel actions, world events (Opus), yearly coherence audit (Opus) |
+| 11 | Events | **Sonnet/Opus** | GM: research, novel actions, world events (Sonnet), yearly coherence audit (Opus) |
 | 12 | Measurement | No | Metrics collected, snapshots saved |
 
-**Model tiering**: Sonnet 4.6 for all routine operations (agent decisions, infrastructure eval, novel actions). Opus 4.6 for coherence audits (yearly) and world event generation — these need holistic world understanding. ~50 Opus calls per 50-year sim ≈ $3-5.
+**Model tiering**: Sonnet 4.6 for all routine operations (agent decisions, infrastructure eval, novel actions, world events). Opus 4.6 only for yearly coherence audits — these need holistic world understanding. ~10 Opus calls per 50-year sim. Tool conversations (multi-turn with world inspection) are estimated at 4x single-call cost for budget tracking.
 
 ### Property Rights & Labor Market
 
@@ -388,13 +392,13 @@ Or enter it in the launcher UI's API Key field. Default model: Claude Sonnet 4.6
 
 ### Free-Form Agent Actions
 
-When LLM is enabled, agents aren't limited to hardcoded action types. They can describe creative, novel, or combined strategies in natural language:
+Agents route basic operations (buy, sell, move, produce) through the deterministic system — these never touch the GM. The `FREE_FORM` action type is reserved for novel combined strategies that cannot be expressed as standard actions:
 
 ```json
 {"action": "FREE_FORM", "description": "Use my aqueduct's excess capacity to sell water transport to neighboring farmers while running my drill at half capacity to reduce wear", "budget": 200}
 ```
 
-The Game Master translates this into concrete game mechanics: what resources change, what it costs, what risks and byproducts it creates, what experience domain it exercises. Standard action types (MOVE, BUY, SELL, PRODUCE) remain for routine operations.
+The Game Master translates this into concrete game mechanics: what resources change, what it costs, what risks and byproducts it creates, what experience domain it exercises. Standard action types (MOVE, BUY, SELL, PRODUCE) handle all routine operations deterministically without LLM involvement.
 
 ### Agent Experience & Specialization
 
@@ -411,6 +415,25 @@ Agent-GM interactions can involve clarification rounds:
 4. GM gives final evaluation
 
 The GM has strict information boundaries: it never reveals true risk profiles, hidden byproducts, other agents' information, or its internal reasoning to agents.
+
+### No Magic Systems: Everything Is Emergent
+
+The simulation provides **nothing for free**. There is no built-in marketplace, no free communication network, no magic logistics. Every system that exists in a real economy must be **built by agents** and **approved by the GM for physical/technological consistency**.
+
+This is the emergent progression:
+
+1. **Day 1**: Agents start with nothing. They can shout to adjacent tiles (range 1-2). They can physically walk to a neighbor and offer a trade. That's it.
+2. **An agent might build a market stall** — an infrastructure proposal the GM evaluates. It needs construction materials, labor, and a property claim. If approved, agents within range can come trade there.
+3. **An agent might invent a message board** — requiring basic tech and materials. Communication range increases for that tile.
+4. **Eventually**: telecommunications, roads, logistics networks — all expanding range and capability. But only if agents build them and the tech tree supports them.
+
+None of these are guaranteed. They're possibilities that emerge (or don't) from agent behavior. If no one builds a marketplace, there is no marketplace. If no one builds roads, trade stays local. The simulation tests whether MEAS incentivizes the creation of these systems.
+
+**The GM's job at every evaluation**: "Does the tech exist for this? Does the infrastructure exist? Is this physically possible given what's been built?" The GM refuses proposals that skip technological prerequisites — no online exchange without internet infrastructure, no phone communication without telecommunications.
+
+### Communication Range
+
+Communication range is dynamic and technology-dependent. Without infrastructure, agents can only communicate with those on adjacent tiles (shouting distance). Infrastructure extends range — a message board covers a settlement, a postal service reaches further, telecommunications go wider. The GM enforces tech consistency: an agent cannot broadcast across the map without the infrastructure to support it.
 
 Without an API key, all LLM features fall back to deterministic systems. The simulation runs fully either way.
 
@@ -461,12 +484,12 @@ That's the point. **Economics should be an engineering discipline.** You specify
 All core systems built, wired, and compiling:
 
 - **World**: Hex grid, Perlin noise terrain, 7 terrain types, resource placement, settlement zones, tile history tracking
-- **Economy**: Realistic trade-driven credit flow (no fake injection), order book markets, production chains, consumption needs
+- **Economy**: Realistic trade-driven credit flow (no fake injection), proximity-based agent-to-agent trade (no built-in exchange — marketplaces emerge from agent-created services), production chains, consumption needs
 - **MEAS Scoring**: All 5 axes (EF, CC, LD, RC, EP) with exact spec formulas, deterministic, auditable
 - **Agents**: 18 archetypes (Worker 15%, Entrepreneur 6%, Free Rider 7%, etc.), memory streams, risk-adjusted utility decisions, perceived risk model, experience tracking per domain
-- **LLM Integration**: Claude API, two-tier decisions (deterministic + LLM escalation), concurrent batching, retry logic (3 retries with backoff), cost tracking
-- **Game Master**: Full DM — research, infrastructure evaluation (agent proposes/GM evaluates), novel actions for all archetypes, free-form action resolution, spontaneous world events, tile-specific coherence corrections. Multi-turn conversations with information boundaries. All reasoning observable.
-- **Model Tiering**: Sonnet 4.6 for routine operations, Opus 4.6 for coherence audits and world events
+- **LLM Integration**: Claude API over HTTP/1.1 with a dedicated 100-thread pool (handles 100+ concurrent requests without thread starvation), two-tier decisions (deterministic + LLM escalation), concurrent batching, retry logic (3 retries with backoff), cost tracking
+- **Game Master**: Full DM — research, infrastructure evaluation (agent proposes/GM evaluates), novel actions for all archetypes, free-form action resolution, spontaneous world events, tile-specific coherence corrections. Multi-turn tool conversations with world-inspection tools (inspect_tile, inspect_agent, query_market, etc.) ground every decision in actual world state. Refuses out-of-jurisdiction requests (no trading, no market participation). Enforces tech tree prerequisites. Information boundaries. All reasoning observable.
+- **Model Tiering**: Sonnet 4.6 for routine operations (including world events), Opus 4.6 only for yearly coherence audits. Tool conversations estimated at 4x single-call cost for budget tracking
 - **Infrastructure**: GM-dynamic types, resource flow, maintenance/degradation, construction time. **Private** (farms, mines, factories) requires property claim. **Public** (roads, trails) requires governance approval, no property needed. Reserve robots available at premium for construction labor.
 - **Risk System**: Universal (all entity types), evolution model (age/usage/maintenance/environment/neighbors), true vs perceived risk, cascading effects
 - **Externalities**: Universal byproduct system with true/measured/perceived pollution layers. Hidden externalities go undetected until consequences emerge. Processed every tick, feeds into EF scoring.
@@ -476,10 +499,10 @@ All core systems built, wired, and compiling:
 - **Labor Market**: Business owners hire unemployed agents. Wages flow. Robot displacement triggers LD axis. Weighted labor count prevents gig economy gaming.
 - **Subsistence**: Food + shelter requirements with grace period, graduated consequences, incapacitation at low satisfaction (survival mode)
 - **Commodity Reserve**: Physical resource backing for credits, GM-managed yearly, 20% minimum ratio, agents can't access directly
-- **Communication**: Observable message log — agent-to-agent, agent-to-GM, GM internal reasoning, multi-turn conversations with information boundaries. Auto-refreshing panel with agent filter, channel filter, full message detail view.
+- **Communication**: Observable message log — agent-to-agent, agent-to-GM, GM internal reasoning, multi-turn conversations with information boundaries. Auto-refreshing panel with filter options (All, All Agents, GAME_MASTER, individual agents), Ctrl+F search, auto-scroll toggle, full message detail view. Dynamic communication range (adjacent tiles without phones; infrastructure extends range; GM enforces tech consistency).
 - **Governance**: Multi-government, voting lifecycle, judicial disputes, agent migration
 - **Metrics/Output**: CSV metrics, comprehensive JSON snapshots (agents + infrastructure + services + contracts + property + reserve state + LLM costs + risk events + communication), full communication transcript
-- **Visualization**: JavaFX hex renderer with agent dots, auto-refreshing dashboard charts, inspector panel, threaded communication log, live console with pause/clear/copy
+- **Visualization**: JavaFX hex renderer with agent dots, auto-refreshing dashboard charts, inspector panel, threaded communication log with filter options (All, All Agents, GAME_MASTER, individual agents), Ctrl+F search, auto-scroll toggle, live console with pause/clear/copy
 
 ### Documentation
 
