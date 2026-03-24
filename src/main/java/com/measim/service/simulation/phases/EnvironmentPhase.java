@@ -33,9 +33,12 @@ public class EnvironmentPhase implements TickPhase {
         // Natural environment recovery
         environmentService.tickRecovery();
 
-        // Resource regeneration
-        for (var tile : worldDao.getAllTiles())
+        // Resource regeneration and tile history tracking
+        for (var tile : worldDao.getAllTiles()) {
             for (var resource : tile.resources()) resource.regenerate();
+            if (tile.hasActiveProduction()) tile.history().recordInfrastructureTick();
+            else tile.history().tickIdle();
+        }
 
         // Infrastructure maintenance: owners pay upkeep or infra degrades
         infrastructureService.tickMaintenance(currentTick);

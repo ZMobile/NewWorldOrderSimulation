@@ -239,7 +239,7 @@ public final class GameMasterPrompts {
                 """ + INFORMATION_BOUNDARY;
     }
 
-    public static String worldEventUserPrompt(WorldState state) {
+    public static String worldEventUserPrompt(WorldState state, String notableTiles) {
         return """
                 Current simulation state (tick %d, year %d):
                   Environmental health: %.2f %s
@@ -251,6 +251,9 @@ public final class GameMasterPrompts {
                   Tech discoveries: %d
                   Crisis tiles: %d
                   Recent events: %s
+
+                Notable tiles:
+                %s
                 """.formatted(
                 state.currentTick(),
                 state.currentTick() / state.ticksPerYear(),
@@ -266,7 +269,8 @@ public final class GameMasterPrompts {
                 state.ubiPoolSize(),
                 state.totalDiscoveries(),
                 state.crisisTileCount(),
-                state.recentEvents().isEmpty() ? "None" : String.join("; ", state.recentEvents())
+                state.recentEvents().isEmpty() ? "None" : String.join("; ", state.recentEvents()),
+                notableTiles
         );
     }
 
@@ -287,6 +291,11 @@ public final class GameMasterPrompts {
                 - Risk: accumulated hidden byproducts should eventually surface as environmental/health consequences
                 - Spatial: agents clustered in one area = resources elsewhere regenerating, unclaimed property available
 
+                TILE-SPECIFIC CORRECTIONS:
+                You may also issue corrections to specific tiles based on their history.
+                A tile that has been industrialized for 50 ticks should have degraded soil.
+                A tile abandoned for 20 ticks should show recovery. These are physical consequences.
+
                 Respond with JSON:
                 {
                   "coherent": true/false,
@@ -296,10 +305,14 @@ public final class GameMasterPrompts {
                       "type": "COHERENCE_CORRECTION",
                       "name": "Correction Name",
                       "description": "What needs to change",
-                      "severity": 0.0-1.0
+                      "severity": 0.0-1.0,
+                      "tileQ": null or N,
+                      "tileR": null or N,
+                      "environmentChange": {"soil": 0.0, "air": 0.0, "water": 0.0, "biodiversity": 0.0}
                     }
                   ]
                 }
+                environmentChange values are deltas (-0.1 = degrade, +0.05 = improve). null if not tile-specific.
                 Only output JSON.
                 """ + INFORMATION_BOUNDARY;
     }

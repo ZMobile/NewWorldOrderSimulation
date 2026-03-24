@@ -502,9 +502,10 @@ public class GameMasterServiceImpl implements GameMasterService {
             return generateWorldEventsDeterministic(currentTick, worldState);
         }
         try {
+            String tileSummaries = buildNotableTileSummaries();
             LlmResponse response = llmService.queryGameMaster(
                     GameMasterPrompts.worldEventSystemPrompt(),
-                    GameMasterPrompts.worldEventUserPrompt(worldState)
+                    GameMasterPrompts.worldEventUserPrompt(worldState, tileSummaries)
             ).join();
             List<WorldEvent> events = parseWorldEvents(response.content(), currentTick);
             events.forEach(this::logEvent);
@@ -574,7 +575,7 @@ public class GameMasterServiceImpl implements GameMasterService {
         try {
             LlmResponse response = llmService.queryGameMaster(
                     GameMasterPrompts.coherenceAuditSystemPrompt(),
-                    GameMasterPrompts.worldEventUserPrompt(worldState) // reuse state summary
+                    GameMasterPrompts.worldEventUserPrompt(worldState, buildNotableTileSummaries())
             ).join();
             return parseCoherenceResponse(response.content(), currentTick);
         } catch (Exception e) {
@@ -649,6 +650,21 @@ public class GameMasterServiceImpl implements GameMasterService {
         } catch (Exception e) {
             return "I plan to build " + proposalName + " using standard materials and maintain it regularly.";
         }
+    }
+
+    private String buildNotableTileSummaries() {
+        StringBuilder sb = new StringBuilder();
+        var allTiles = worldDao.getAllTiles();
+        allTiles.stream()
+                .filter(t -> t.history().totalInfrastructureTicksBuilt() > 0
+                        || t.history().riskEventsOccurred() > 0
+                        || t.environment().averageHealth() < 0.5)
+                .sorted((a, b) -> b.history().totalInfrastructureTicksBuilt() - a.history().totalInfrastructureTicksBuilt())
+                .limit(8)
+                .forEach(t -> sb.append(String.format("  (%d,%d) %s env=%.2f — %s%n",
+                        t.coord().q(), t.coord().r(), t.terrain(),
+                        t.environment().averageHealth(), t.history().summary())));
+        return sb.isEmpty() ? "No notable tiles." : sb.toString();
     }
 
     private String getAgentExperience(String agentId) {

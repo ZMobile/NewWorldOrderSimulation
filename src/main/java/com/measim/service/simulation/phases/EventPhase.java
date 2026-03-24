@@ -2,10 +2,13 @@ package com.measim.service.simulation.phases;
 
 import com.measim.dao.AgentDao;
 import com.measim.dao.MetricsDao;
+import com.measim.dao.WorldDao;
 import com.measim.model.agent.Agent;
 import com.measim.model.agent.MemoryEntry;
 import com.measim.model.config.SimulationConfig;
 import com.measim.model.gamemaster.WorldEvent;
+import com.measim.model.world.HexCoord;
+import com.measim.model.world.Tile;
 import com.measim.service.gamemaster.GameMasterService;
 import com.measim.service.gamemaster.GameMasterService.WorldState;
 import com.measim.service.simulation.TickPhase;
@@ -38,17 +41,20 @@ public class EventPhase implements TickPhase {
     private final MetricsDao metricsDao;
     private final EnvironmentService environmentService;
     private final CreditFlowService creditFlowService;
+    private final WorldDao worldDao;
 
     @Inject
     public EventPhase(SimulationConfig config, GameMasterService gameMasterService,
                        AgentDao agentDao, MetricsDao metricsDao,
-                       EnvironmentService environmentService, CreditFlowService creditFlowService) {
+                       EnvironmentService environmentService, CreditFlowService creditFlowService,
+                       WorldDao worldDao) {
         this.config = config;
         this.gameMasterService = gameMasterService;
         this.agentDao = agentDao;
         this.metricsDao = metricsDao;
         this.environmentService = environmentService;
         this.creditFlowService = creditFlowService;
+        this.worldDao = worldDao;
     }
 
     @Override public String name() { return "Events"; }
@@ -189,11 +195,70 @@ public class EventPhase implements TickPhase {
     }
 
     private void applyCoherenceCorrection(WorldEvent correction, int currentTick) {
+        // Global satisfaction adjustment
         Object satisfactionDelta = correction.parameters().get("satisfactionDelta");
         if (satisfactionDelta instanceof Number n) {
             for (Agent agent : agentDao.getAllAgents()) {
                 agent.state().setSatisfaction(agent.state().satisfaction() + n.doubleValue());
             }
         }
+
+        // Tile-specific environment corrections
+        Object tileQ = correction.parameters().get("tileQ");
+        Object tileR = correction.parameters().get("tileR");
+        if (tileQ instanceof Number q && tileR instanceof Number r) {
+            Tile tile = worldDao.getTile(new HexCoord(q.intValue(), r.intValue()));
+            if (tile != null) {
+                Object envChange = correction.parameters().get("environmentChange");
+                if (envChange instanceof java.util.Map<?, ?> changes) {
+                    Object soil = changes.get("soil");
+                    Object air = changes.get("air");
+                    Object water = changes.get("water");
+                    Object bio = changes.get("biodiversity");
+                    if (soil instanceof Number s) tile.environment().applyPollution(-s.doubleValue());
+                    if (air instanceof Number a) tile.environment().applyPollution(-a.doubleValue() * 0.5);
+                    if (water instanceof Number w) tile.environment().applyPollution(-w.doubleValue() * 0.3);
+                    // Positive values = improvement (negative pollution = healing)
+                }
+                tile.history().recordSignificantEvent("Coherence correction: " + correction.description());
+            }
+        }
+    }
+
+    /**
+     * Build summaries of the most notable tiles for GM context.
+     * Notable = highest activity, worst environment, most risk events.
+     */
+    private String buildNotableTileSummaries() {
+        StringBuilder sb = new StringBuilder();
+        var allTiles = worldDao.getAllTiles();
+
+        // Top 5 most industrialized tiles
+        allTiles.stream()
+                .filter(t -> t.history().totalInfrastructureTicksBuilt() > 0)
+                .sorted((a, b) -> b.history().totalInfrastructureTicksBuilt() - a.history().totalInfrastructureTicksBuilt())
+                .limit(5)
+                .forEach(t -> sb.append(String.format("  (%d,%d) %s — %s | env: %.2f%n",
+                        t.coord().q(), t.coord().r(), t.terrain(),
+                        t.history().summary(), t.environment().averageHealth())));
+
+        // Top 3 worst environment tiles
+        allTiles.stream()
+                .filter(t -> t.environment().averageHealth() < 0.5)
+                .sorted((a, b) -> Double.compare(a.environment().averageHealth(), b.environment().averageHealth()))
+                .limit(3)
+                .forEach(t -> sb.append(String.format("  (%d,%d) DEGRADED env=%.2f — %s%n",
+                        t.coord().q(), t.coord().r(), t.environment().averageHealth(),
+                        t.history().summary())));
+
+        // Tiles with risk events
+        allTiles.stream()
+                .filter(t -> t.history().riskEventsOccurred() > 0)
+                .limit(3)
+                .forEach(t -> sb.append(String.format("  (%d,%d) %d risk events — %s%n",
+                        t.coord().q(), t.coord().r(), t.history().riskEventsOccurred(),
+                        t.history().summary())));
+
+        return sb.isEmpty() ? "No notable tiles yet." : sb.toString();
     }
 }

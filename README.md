@@ -287,6 +287,16 @@ The gap between true and measured is where the system can be gamed — an Exploi
 
 Byproduct types: air pollution, water contamination, soil degradation, noise, waste, radiation, chemical, thermal, ecological, social, custom (GM-defined). Each has a visibility class, evolution model, diffusion radius, and accumulation rate.
 
+### Tile History & GM Corrections
+
+Every tile tracks its history: cumulative infrastructure ticks, agent visits, production activity, pollution received, risk events, idle time. The GM uses this during:
+
+- **Coherence audits** — "This tile has been industrialized for 50 ticks, soil should be degraded" → GM issues tile-specific environment corrections
+- **World events** — notable tiles (highest activity, worst environment, most risk events) are included in the GM's context so events target appropriate locations
+- **Infrastructure evaluation** — the GM knows the tile's history when evaluating proposals ("building here is risky given 3 prior failures")
+
+Corrections modify tile environment directly: soil quality, air quality, water quality, biodiversity — with specific deltas per tile.
+
 ### Agent-Created Services
 
 Services are first-class entities — not hardcoded, not predefined. Agents create them:

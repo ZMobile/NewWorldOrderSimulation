@@ -159,6 +159,7 @@ public class ActionExecutionPhase implements TickPhase {
         double extractionMultiplier = infrastructureService.getExtractionMultiplier(loc);
 
         agent.state().addExperience("extraction");
+        tile.history().recordAgentVisit();
 
         // Extract from local tile
         for (ResourceNode resource : tile.resources()) {
@@ -204,6 +205,11 @@ public class ActionExecutionPhase implements TickPhase {
 
                 agent.state().addEmissions(result.pollutionGenerated());
                 environmentService.applyProductionPollution(agent.state().location(), result.pollutionGenerated());
+                Tile prodTile = worldDao.getTile(agent.state().location());
+                if (prodTile != null) {
+                    prodTile.history().recordProduction();
+                    prodTile.history().recordPollution(result.pollutionGenerated());
+                }
                 agent.state().setHumanEmployees(agent.state().ownedRobots() > 0 ? 0 : 1);
                 agent.state().addExperience("production:" + chain.id());
                 agent.state().recordSuccess("production:" + chain.id());

@@ -9,6 +9,7 @@ public class Tile {
     private final HexCoord coord;
     private final TerrainType terrain;
     private final TileEnvironment environment;
+    private final TileHistory history;
     private final List<ResourceNode> resources;
     private final List<String> structureIds;
     private String governmentId;
@@ -18,6 +19,7 @@ public class Tile {
         this.coord = coord;
         this.terrain = terrain;
         this.environment = new TileEnvironment(terrain);
+        this.history = new TileHistory();
         this.resources = new ArrayList<>();
         this.structureIds = new ArrayList<>();
     }
@@ -30,6 +32,7 @@ public class Tile {
     public HexCoord coord() { return coord; }
     public TerrainType terrain() { return terrain; }
     public TileEnvironment environment() { return environment; }
+    public TileHistory history() { return history; }
     public List<ResourceNode> resources() { return Collections.unmodifiableList(resources); }
     public List<String> structureIds() { return Collections.unmodifiableList(structureIds); }
     public String governmentId() { return governmentId; }
