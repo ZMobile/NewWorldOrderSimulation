@@ -63,4 +63,7 @@ public sealed interface AgentAction {
 
     /** Terminate an existing contract (quit job, end partnership, cancel agreement). */
     record TerminateContract(String contractId, String reason) implements AgentAction {}
+
+    /** Register a property claim on a tile (first-come-first-served, validated by Governance GM). */
+    record ClaimProperty(HexCoord tile) implements AgentAction {}
 }

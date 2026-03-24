@@ -5,6 +5,7 @@ import com.measim.model.communication.Message;
 import com.measim.model.config.SimulationConfig;
 import com.measim.model.economy.CommodityReserve;
 import com.measim.service.communication.CommunicationService;
+import com.measim.service.gamemaster.GameMasterPrompts;
 import com.measim.service.llm.LlmService;
 import com.measim.model.llm.LlmResponse;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -84,27 +85,9 @@ public class ReserveServiceImpl implements ReserveService {
         }
 
         try {
-            String systemPrompt = """
-                    You are the Game Master managing the commodity reserve for MeaSim's credit system.
-                    The reserve holds physical commodities that back the credits in circulation.
-                    Your job: decide whether to adjust reserve holdings to maintain stability.
-
-                    RULES:
-                    - Reserve ratio must stay above the minimum (currently %s%%)
-                    - You can buy commodities (increases reserve, costs credits from the reserve fund)
-                    - You can sell commodities (decreases reserve, adds credits to the system)
-                    - You can adjust commodity valuations based on scarcity/demand
-                    - All changes must be numerically justified
-
-                    Respond with JSON:
-                    {
-                      "action": "HOLD|BUY|SELL|REVALUE",
-                      "reasoning": "Why this decision",
-                      "trades": [{"commodity": "MINERAL", "quantity": N.N, "creditAmount": N.N}],
-                      "valuationChanges": [{"commodity": "MINERAL", "newValue": N.N}]
-                    }
-                    Only output JSON.
-                    """.formatted(String.format("%.0f", reserve.minimumRatio() * 100));
+            // GOVERNANCE GM — reserve management
+            String systemPrompt = GameMasterPrompts.governanceReserveSystemPrompt(
+                    String.format("%.0f", reserve.minimumRatio() * 100));
 
             String userPrompt = String.format("""
                     Current reserve state:

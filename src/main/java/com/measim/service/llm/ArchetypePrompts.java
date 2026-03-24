@@ -67,7 +67,18 @@ public final class ArchetypePrompts {
                 {"action": "PROPOSE_CONTRACT", "targetAgent": "agent_42", "contractType": "RENTAL|WORK_RELATION|SERVICE|PARTNERSHIP", "valuePerTick": 5.0, "durationTicks": 12, "terms": "description"}
                 {"action": "ACCEPT_CONTRACT", "proposerAgent": "agent_42", "contractType": "RENTAL"}
                 {"action": "TERMINATE_CONTRACT", "contractId": "contract_123", "reason": "Better opportunity elsewhere"}
+                {"action": "CLAIM_PROPERTY", "q": N, "r": N}
                 {"action": "IDLE"}
+
+                CONTRACTS: All contracts are BINDING. Wages auto-garnish each tick. Trades swap atomically.
+                Either party can TERMINATE_CONTRACT but obligations up to that point are settled.
+
+                PROPERTY: First-come-first-served. CLAIM_PROPERTY registers your claim. Cost goes to UBI pool.
+                You need property to build private infrastructure. Rent it out via PROPOSE_CONTRACT.
+
+                GOVERNANCE: There is no built-in government. If you want courts, police, regulations,
+                or collective rules, create them as services or negotiate them with other agents.
+                The only automatic systems are MEAS scoring and contract enforcement.
 
                 TRADE: All commerce is agent-to-agent via OFFER_TRADE. There is no marketplace.
                 Set targetAgent to a specific agent ID for a private offer,

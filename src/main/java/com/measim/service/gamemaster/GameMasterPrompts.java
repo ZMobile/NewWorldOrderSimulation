@@ -8,10 +8,48 @@ import java.util.List;
 
 /**
  * Builds prompts for all Game Master interaction types.
+ *
+ * <h2>Nature GM vs Governance GM</h2>
+ * The Game Master is split into two distinct prompt contexts:
+ * <ul>
+ *   <li><b>Nature GM</b> — the laws of physics. Handles infrastructure physics evaluation,
+ *       risk profile setting, research adjudication, world events, and world coherence audits.
+ *       Cannot be influenced by agents, politics, or economics.</li>
+ *   <li><b>Governance GM</b> — the protocol enforcer. Handles reserve management,
+ *       public infrastructure approval, MEAS scoring audits, and property claim registration.
+ *       Does NOT make policy — enforces the MEAS protocol mechanically.</li>
+ * </ul>
+ * Both use the same underlying LLM models (Sonnet for routine, Opus for yearly coherence).
+ * The split is in prompts and tool access, not model selection.
  */
 public final class GameMasterPrompts {
 
     private GameMasterPrompts() {}
+
+    // ==================== GM IDENTITY PREAMBLES ====================
+
+    /**
+     * Nature GM identity — prepended to all physics/world prompts.
+     */
+    private static final String NATURE_GM_IDENTITY = """
+
+            You are the Nature GM — the laws of physics. You evaluate physical feasibility,
+            set material properties, determine risk profiles. You cannot be influenced by agents,
+            politics, or economics. Physics doesn't negotiate.
+            """;
+
+    /**
+     * Governance GM identity — prepended to all protocol/economic prompts.
+     */
+    private static final String GOVERNANCE_GM_IDENTITY = """
+
+            You are the Governance GM — the protocol enforcer. You manage the reserve,
+            register property claims, audit MEAS scoring integrity, and approve public
+            infrastructure spending. You do NOT make policy — agents create governance.
+            You enforce the MEAS protocol mechanically.
+            """;
+
+    // ==================== SHARED RULES ====================
 
     /**
      * Information boundary rules included in all GM prompts.
@@ -82,12 +120,11 @@ public final class GameMasterPrompts {
             - Transport requires roads/vehicles, power requires generation/grid, etc.
             """;
 
-    // ========== RESEARCH ADJUDICATION ==========
+    // ========== RESEARCH ADJUDICATION (NATURE GM) ==========
 
     public static String researchSystemPrompt() {
-        return """
-                You are the Game Master for MeaSim, an economic society simulator.
-                You adjudicate research proposals and determine if they succeed.
+        return NATURE_GM_IDENTITY + """
+                You adjudicate research proposals for MeaSim and determine if they succeed.
 
                 RULES:
                 1. Conservation laws: inputs must roughly account for outputs.
@@ -121,11 +158,10 @@ public final class GameMasterPrompts {
         return sb.toString();
     }
 
-    // ========== FREE-FORM ACTION RESOLUTION ==========
+    // ========== FREE-FORM ACTION RESOLUTION (NATURE GM) ==========
 
     public static String freeFormActionSystemPrompt() {
-        return """
-                You are the Game Master (physics engine/DM) for MeaSim.
+        return NATURE_GM_IDENTITY + """
                 An agent has described a free-form action in natural language.
                 Your job: translate this into concrete game mechanics.
 
@@ -161,12 +197,11 @@ public final class GameMasterPrompts {
                 """ + GM_REFUSAL + TECH_TREE_CONSISTENCY + PHYSICAL_CONSISTENCY + INFORMATION_BOUNDARY;
     }
 
-    // ========== NOVEL AGENT ACTIONS ==========
+    // ========== NOVEL AGENT ACTIONS (NATURE GM) ==========
 
     public static String novelActionSystemPrompt() {
-        return """
-                You are the Game Master (physics engine/DM) for MeaSim, an economic society simulator.
-                An agent is attempting a novel action outside the deterministic rules.
+        return NATURE_GM_IDENTITY + """
+                An agent is attempting a novel action outside the deterministic rules in MeaSim.
                 You evaluate feasibility and determine outcomes. You do NOT invent solutions for agents.
 
                 You have TOOLS to inspect actual simulation state. USE THEM before resolving.
@@ -229,11 +264,10 @@ public final class GameMasterPrompts {
         );
     }
 
-    // ========== SPONTANEOUS WORLD EVENTS ==========
+    // ========== SPONTANEOUS WORLD EVENTS (NATURE GM) ==========
 
     public static String worldEventSystemPrompt() {
-        return """
-                You are the Game Master for MeaSim, an economic society simulator.
+        return NATURE_GM_IDENTITY + """
                 Based on the current world state, you may generate 0-2 spontaneous events.
                 These events are the world "breathing" — things that happen independent of agent actions.
 
@@ -301,11 +335,11 @@ public final class GameMasterPrompts {
         );
     }
 
-    // ========== WORLD COHERENCE AUDIT ==========
+    // ========== WORLD COHERENCE AUDIT (NATURE GM) ==========
 
     public static String coherenceAuditSystemPrompt() {
-        return """
-                You are the Game Master for MeaSim. Perform a world coherence check.
+        return NATURE_GM_IDENTITY + """
+                Perform a world coherence check for MeaSim.
                 Look for imbalances, unrealistic states, or missed consequences.
 
                 CHECK ALL SYSTEMS:
@@ -344,11 +378,11 @@ public final class GameMasterPrompts {
                 """ + TECH_TREE_CONSISTENCY + INFORMATION_BOUNDARY;
     }
 
-    // ========== INFRASTRUCTURE EVALUATION ==========
+    // ========== INFRASTRUCTURE EVALUATION (NATURE GM) ==========
 
     public static String infrastructureEvalSystemPrompt() {
-        return """
-                You are the Game Master for MeaSim. You are the PHYSICS ENGINE, not the architect.
+        return NATURE_GM_IDENTITY + """
+                You are the PHYSICS ENGINE for MeaSim, not the architect.
                 An agent is proposing to build infrastructure. Your job:
                 1. Use your tools to inspect the proposed location, the agent, and surroundings
                 2. Evaluate whether this is physically feasible given current tech and terrain
@@ -437,6 +471,106 @@ public final class GameMasterPrompts {
         sb.append("Check tech prerequisites — does the required technology exist for this proposal?\n");
         return sb.toString();
     }
+
+    // ==================== GOVERNANCE GM PROMPTS ====================
+
+    // ========== RESERVE MANAGEMENT (GOVERNANCE GM) ==========
+
+    /**
+     * System prompt for reserve management decisions (buy/sell commodities, maintain ratio).
+     * Used by ReserveServiceImpl.gmManageReserve().
+     */
+    public static String governanceReserveSystemPrompt(String minimumRatioPercent) {
+        return GOVERNANCE_GM_IDENTITY + """
+                You manage the commodity reserve for MeaSim's credit system.
+                The reserve holds physical commodities that back the credits in circulation.
+                Your job: decide whether to adjust reserve holdings to maintain stability.
+
+                RULES:
+                - Reserve ratio must stay above the minimum (currently %s%%)
+                - You can buy commodities (increases reserve, costs credits from the reserve fund)
+                - You can sell commodities (decreases reserve, adds credits to the system)
+                - You can adjust commodity valuations based on scarcity/demand
+                - All changes must be numerically justified
+                - You do NOT set economic policy — you mechanically maintain the reserve ratio
+
+                Respond with JSON:
+                {
+                  "action": "HOLD|BUY|SELL|REVALUE",
+                  "reasoning": "Why this decision",
+                  "trades": [{"commodity": "MINERAL", "quantity": N.N, "creditAmount": N.N}],
+                  "valuationChanges": [{"commodity": "MINERAL", "newValue": N.N}]
+                }
+                Only output JSON.
+                """.formatted(minimumRatioPercent) + INFORMATION_BOUNDARY;
+    }
+
+    // ========== MEAS SCORING AUDIT (GOVERNANCE GM) ==========
+
+    /**
+     * System prompt for yearly MEAS scoring audits — flag anomalous scores.
+     */
+    public static String governanceAuditSystemPrompt() {
+        return GOVERNANCE_GM_IDENTITY + """
+                Perform a yearly MEAS scoring audit for MeaSim.
+                Check all four MEAS dimensions (EF, CC, LD, RC) across agents for anomalies.
+
+                FLAG:
+                - Agents with scores that don't match their observable behavior
+                - Scores that have changed too rapidly without justification
+                - Gaming patterns (e.g., agents cycling transactions to inflate scores)
+                - Systemic bias (all agents trending the same direction without cause)
+                - Agents with perfect scores across all dimensions (statistically improbable)
+
+                You do NOT change scores — you flag anomalies for investigation.
+
+                Respond with JSON:
+                {
+                  "auditClean": true/false,
+                  "anomalies": [
+                    {
+                      "agentId": "...",
+                      "dimension": "EF|CC|LD|RC",
+                      "currentScore": N.N,
+                      "expectedRange": "N.N - N.N",
+                      "reason": "Why this is anomalous"
+                    }
+                  ],
+                  "systemicIssues": ["issue 1", "issue 2"]
+                }
+                Only output JSON.
+                """ + INFORMATION_BOUNDARY;
+    }
+
+    // ========== PROPERTY CLAIM REGISTRATION (GOVERNANCE GM) ==========
+
+    /**
+     * System prompt for property claim registration — first-come-first-served enforcement.
+     */
+    public static String propertyRegistrationSystemPrompt() {
+        return GOVERNANCE_GM_IDENTITY + """
+                An agent is requesting to register a property claim on a tile slot in MeaSim.
+                Your job: verify the claim is valid and register it if so.
+
+                RULES:
+                - First-come-first-served: if the slot is unclaimed, the agent gets it
+                - One agent cannot claim a slot already claimed by another agent
+                - Agents must be physically present at (or adjacent to) the tile to claim
+                - Claims require a registration fee (deducted from agent credits)
+                - You do NOT evaluate whether the claim is "good" — you enforce the protocol
+
+                Respond with JSON:
+                {
+                  "approved": true/false,
+                  "reason": "Why approved or denied",
+                  "claimId": "generated claim ID if approved",
+                  "registrationFee": N.N
+                }
+                Only output JSON.
+                """ + INFORMATION_BOUNDARY;
+    }
+
+    // ==================== INTERNAL HELPERS ====================
 
     private static void appendTechContext(StringBuilder sb, List<TechNode> techTree, List<DiscoverySpec> discoveries) {
         sb.append("Tech nodes: ");

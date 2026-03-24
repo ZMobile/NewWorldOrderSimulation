@@ -108,6 +108,8 @@ public final class LlmResponseParser {
                 case "TERMINATE_CONTRACT" -> new AgentAction.TerminateContract(
                         root.path("contractId").asText(),
                         root.path("reason").asText(""));
+                case "CLAIM_PROPERTY" -> new AgentAction.ClaimProperty(
+                        new HexCoord(root.path("q").asInt(), root.path("r").asInt()));
                 default -> new AgentAction.Idle();
             };
         } catch (Exception e) {

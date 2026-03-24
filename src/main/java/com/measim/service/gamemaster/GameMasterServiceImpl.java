@@ -24,6 +24,22 @@ import jakarta.inject.Singleton;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Game Master service implementation.
+ *
+ * <h2>Nature GM vs Governance GM</h2>
+ * Methods are served by one of two distinct prompt contexts:
+ * <ul>
+ *   <li><b>NATURE GM</b> — physics engine: infrastructure evaluation, risk profiles,
+ *       research adjudication, world events, coherence audits. Cannot be influenced by
+ *       agents, politics, or economics.</li>
+ *   <li><b>GOVERNANCE GM</b> — protocol enforcer: reserve management, MEAS scoring audits,
+ *       property claim registration, public infrastructure approval (future).
+ *       Enforces MEAS protocol mechanically, does not make policy.</li>
+ * </ul>
+ * Both contexts use the same LLM models (Sonnet for routine, Opus for yearly coherence).
+ * The split is in prompts and tool access, not model selection.
+ */
 @Singleton
 public class GameMasterServiceImpl implements GameMasterService {
 
@@ -81,7 +97,7 @@ public class GameMasterServiceImpl implements GameMasterService {
         techRegistry.addTechNode(new TechNode("basic_medicine", "Basic Medicine", Set.of("basic_chemistry", "basic_agriculture"), 1, true));
     }
 
-    // ========== RESEARCH ==========
+    // ========== RESEARCH (NATURE GM) ==========
 
     @Override
     public void submitResearch(String agentId, String direction, double creditInvestment, int currentTick) {
@@ -123,7 +139,7 @@ public class GameMasterServiceImpl implements GameMasterService {
         }
     }
 
-    // ========== FREE-FORM ACTION RESOLUTION ==========
+    // ========== FREE-FORM ACTION RESOLUTION (NATURE GM) ==========
 
     @Override
     public FreeFormResolution resolveFreeFormAction(String agentId, String description,
@@ -233,7 +249,7 @@ public class GameMasterServiceImpl implements GameMasterService {
         return sb.toString();
     }
 
-    // ========== NOVEL AGENT ACTIONS ==========
+    // ========== NOVEL AGENT ACTIONS (NATURE GM) ==========
 
     @Override
     public void submitNovelAction(NovelAction action) {
@@ -351,7 +367,7 @@ public class GameMasterServiceImpl implements GameMasterService {
         );
     }
 
-    // ========== INFRASTRUCTURE EVALUATION (agent proposes, GM evaluates) ==========
+    // ========== INFRASTRUCTURE EVALUATION (NATURE GM — physics; Governance GM approval for public infra is a future enhancement) ==========
 
     @Override
     public Optional<InfrastructureType> evaluateInfrastructureProposal(InfrastructureProposal proposal, int currentTick) {
@@ -571,7 +587,7 @@ public class GameMasterServiceImpl implements GameMasterService {
         }
     }
 
-    // ========== SPONTANEOUS WORLD EVENTS ==========
+    // ========== SPONTANEOUS WORLD EVENTS (NATURE GM) ==========
 
     @Override
     public List<WorldEvent> generateWorldEvents(int currentTick, WorldState worldState) {
@@ -644,7 +660,7 @@ public class GameMasterServiceImpl implements GameMasterService {
         return events;
     }
 
-    // ========== WORLD COHERENCE AUDIT ==========
+    // ========== WORLD COHERENCE AUDIT (NATURE GM — uses Opus for holistic understanding) ==========
 
     @Override
     public List<WorldEvent> auditWorldCoherence(int currentTick, WorldState worldState) {

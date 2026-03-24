@@ -99,15 +99,15 @@ But the scoring system itself requires:
 
 This is the kind of infrastructure that's trivial with modern computing and was impossible without it. **MEAS is the first economic system designed for the computational era.**
 
-### Governance: Separation of Powers Over the Algorithm
+### The 5-Layer Architecture
 
-Whoever controls the scoring formulas has enormous power. MEAS addresses this with three branches:
+1. **MEAS Protocol** (automatic) — Scoring, modifiers, UBI distribution. Runs every tick. No vote required.
+2. **Contracts** (binding) — Wages auto-garnish, trades atomic, either party can terminate. Enforced by the engine.
+3. **Property** (first-come-first-served) — Registered tile claims, cost flows to UBI pool.
+4. **Governance GM** (periodic) — Yearly MEAS audit, reserve management, public infrastructure approval. Enforces protocol; doesn't make policy.
+5. **Emergent** — Agents build courts, police, regulations, insurance as services. Nothing is provided; everything is earned.
 
-- **Legislative**: Sets objectives, approves formula versions, defines thresholds. Democratic input.
-- **Technical (Executive)**: Independent body that runs measurements, computes scores, models impact. Insulated from politics like a central bank.
-- **Judicial**: Adjudicates measurement disputes, formula challenges, and wrongful scoring claims. Full audit trail access.
-
-No single branch can change the formulas alone. Changes follow: proposal → impact modeling → public comment → vote → judicial review → implementation with transition period.
+The GM operates in two contexts: **Nature GM** (physics, risk, materials, world events — cannot be influenced by agents) and **Governance GM** (reserve management, MEAS audit, property registration, public infrastructure approval — enforces protocol, doesn't make policy).
 
 ---
 
@@ -122,8 +122,7 @@ You don't deploy a new operating system to production without testing it. MeaSim
 - **Complete MEAS scoring engine** with all five axes and exact spec formulas
 - **Proximity-based trade** — no built-in exchange; trade is agent-to-agent or through agent-created marketplace services
 - **Robot labor** with configurable automation curves
-- **Multi-government jurisdictions** with different MEAS parameters, enabling direct policy comparison
-- **Agent migration** between jurisdictions based on satisfaction
+- **Single MEAS protocol zone** — one set of rules, emergent governance built by agents as services
 - **Agent messaging** — private messages (SEND_MESSAGE) and tile-local broadcasts (BROADCAST) within communication range, enabling negotiation, coalition building, and information sharing
 - **Technology discovery** through a Game Master LLM that adjudicates research and maintains world coherence
 
@@ -137,12 +136,12 @@ Each agent archetype is designed to stress-test a specific aspect of the system:
 | **Entrepreneur** | Business creation, innovation pipeline |
 | **Cooperator** | Commons contribution, community building |
 | **Free Rider** | UBI adequacy — does the floor work with minimal participation? |
-| **Regulator** | Governance participation, formula proposals |
+| **Regulator** | Governance service creation, rule enforcement attempts |
 | **Innovator** | Research system, tech tree expansion |
 | **Accumulator** | Resource concentration limits — does the RC drag work? |
 | **Exploiter** | Scoring loopholes, measurement gaps — can you game it? |
 | **Artisan** | Non-maximizing economic behavior — is there room for craft? |
-| **Politician** | Coalition building, governance capture attempts |
+| **Politician** | Coalition building, emergent governance capture attempts |
 | **Philanthropist** | Wealth redistribution, public goods funding |
 | **Automator** | Labor displacement dynamics, robot adoption curves |
 | **Worker** | Stable work relations, fair wages, labor market dynamics |
@@ -236,7 +235,7 @@ com.measim
 │   ├── agent/            Decision engine (risk-adjusted), Spawning
 │   ├── llm/              Claude API client, archetype prompts, response parsing, cost tracking
 │   ├── gamemaster/       Full DM: research, infrastructure eval, novel actions, world events, coherence
-│   ├── governance/       Voting, judicial disputes, migration
+│   ├── governance/       Governance GM (reserve, audit, infrastructure approval)
 │   ├── infrastructure/   Build validation, resource flow, maintenance, GM-dynamic types
 │   ├── risk/             Evolution model evaluation, cascade propagation, consequence application
 │   ├── externality/      Byproduct processing, true vs measured vs perceived pollution
@@ -338,7 +337,7 @@ Service categories: financial, logistics, healthcare, education, legal, security
 | 5 | Contracts | No | Wages paid, rent collected, service subscriptions, breach detection |
 | 6 | Scoring | No | Score vectors recomputed, modifiers updated, audit trail |
 | 7 | UBI | No | Credits distributed from pool to all agents |
-| 8 | Governance | Partial | Proposals, votes, disputes |
+| 8 | Governance | Partial | Property registration, public infrastructure approval, yearly MEAS audit |
 | 9 | Environment | No | Pollution diffusion, recovery, infrastructure maintenance, externality processing |
 | 10 | Risk | Partial | Deterministic probability check → GM adjudicates triggered risks → cascades |
 | 11 | Events | **Sonnet/Opus** | GM: research, novel actions, world events (Sonnet), yearly coherence audit (Opus) |
@@ -399,7 +398,7 @@ Agents route survival operations (extract, produce, move) through the determinis
 {"action": "FREE_FORM", "description": "Use my aqueduct's excess capacity to sell water transport to neighboring farmers while running my drill at half capacity to reduce wear", "budget": 200}
 ```
 
-The Game Master translates this into concrete game mechanics: what resources change, what it costs, what risks and byproducts it creates, what experience domain it exercises. Standard action types (MOVE, EXTRACT, PRODUCE) handle physics deterministically. Contract negotiation (OFFER_JOB, ACCEPT_JOB, PROPOSE_CONTRACT, ACCEPT_CONTRACT, TERMINATE_CONTRACT) lets agents negotiate work agreements, rentals, and partnerships directly.
+The Game Master translates this into concrete game mechanics: what resources change, what it costs, what risks and byproducts it creates, what experience domain it exercises. Standard action types (MOVE, EXTRACT, PRODUCE, CLAIM_PROPERTY) handle physics deterministically. Contract negotiation (OFFER_JOB, ACCEPT_JOB, PROPOSE_CONTRACT, ACCEPT_CONTRACT, TERMINATE_CONTRACT) lets agents negotiate work agreements, rentals, and partnerships directly.
 
 ### Agent Experience & Specialization
 
@@ -501,7 +500,7 @@ All core systems built, wired, and compiling:
 - **Subsistence**: Food + shelter requirements with grace period, graduated consequences, incapacitation at low satisfaction (survival mode)
 - **Commodity Reserve**: Physical resource backing for credits, GM-managed yearly, 20% minimum ratio, agents can't access directly
 - **Communication**: Observable message log — agent-to-agent, agent-to-GM, GM internal reasoning, multi-turn conversations with information boundaries. Auto-refreshing panel with filter options (All, All Agents, GAME_MASTER, individual agents), Ctrl+F search, auto-scroll toggle, full message detail view. Dynamic communication range (adjacent tiles without phones; infrastructure extends range; GM enforces tech consistency).
-- **Governance**: Multi-government, voting lifecycle, judicial disputes, agent migration
+- **Governance**: Minimal protocol layer (Governance GM for reserve/audit/infrastructure), emergent services for courts/police/regulation. Single zone, no jurisdictions. Contracts are binding, property is registered.
 - **Metrics/Output**: CSV metrics, comprehensive JSON snapshots (agents + infrastructure + services + contracts + property + reserve state + LLM costs + risk events + communication), full communication transcript
 - **Visualization**: JavaFX hex renderer with agent dots, auto-refreshing dashboard charts, inspector panel, threaded communication log with filter options (All, All Agents, GAME_MASTER, individual agents), Ctrl+F search, auto-scroll toggle, live console with pause/clear/copy
 

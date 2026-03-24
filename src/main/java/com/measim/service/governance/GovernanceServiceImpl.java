@@ -13,13 +13,22 @@ import jakarta.inject.Singleton;
 
 import java.util.UUID;
 
+/**
+ * Governance in MeaSim is minimal by design.
+ *
+ * The 5-layer architecture:
+ *   Layer 1: MEAS Protocol (automatic) — scoring, modifiers, UBI
+ *   Layer 2: Contracts (binding, automatic) — wages garnished, trades atomic
+ *   Layer 3: Property (first-come-first-served) — registered via GM, simple ledger
+ *   Layer 4: Governance GM (periodic) — yearly MEAS audit, reserve management
+ *   Layer 5: Emergent (agent-built) — courts, police, regulations, coalitions
+ *
+ * This service handles only the minimal institutional functions.
+ * There is NO hardcoded voting system, NO fixed government regions,
+ * NO automatic legislation. Agents create governance through their actions.
+ */
 @Singleton
 public class GovernanceServiceImpl implements GovernanceService {
-
-    private static final double APPROVAL_THRESHOLD = 0.5;
-    private static final int COMMENT_PERIOD_TICKS = 3;
-    private static final int VOTING_PERIOD_TICKS = 3;
-    private static final int IMPLEMENTATION_DELAY_TICKS = 2;
 
     private final GovernmentDao governmentDao;
     private final AgentDao agentDao;
@@ -35,19 +44,11 @@ public class GovernanceServiceImpl implements GovernanceService {
 
     @Override
     public void initializeGovernments() {
-        for (var def : config.governments()) {
-            governmentDao.addGovernment(new Government(
-                    def.name().toLowerCase().replace(' ', '_'),
-                    def.name(),
-                    new HexCoord(def.q1(), def.r1()),
-                    new HexCoord(def.q2(), def.r2()),
-                    def.efWeight(), def.ubiMultiplier(), def.domainTwoStrictness()));
-        }
-
-        // Default government if none configured
+        // Single default jurisdiction covering the whole map.
+        // MEAS parameters are protocol-level — not government-specific.
         if (governmentDao.getAllGovernments().isEmpty()) {
             governmentDao.addGovernment(new Government(
-                    "default", "Default Government",
+                    "default", "MEAS Protocol Zone",
                     new HexCoord(0, 0),
                     new HexCoord(config.worldWidth() - 1, config.worldHeight() - 1),
                     1.0, 1.0, 1.0));
@@ -57,6 +58,9 @@ public class GovernanceServiceImpl implements GovernanceService {
     @Override
     public void proposeFormulaChange(String agentId, String governmentId, String parameterName,
                                       double proposedValue, String description, int currentTick) {
+        // Agents can propose MEAS parameter changes.
+        // These are recorded but require agent-built governance to process.
+        // The Governance GM evaluates during yearly audits whether any proposals have merit.
         String id = "proposal_" + UUID.randomUUID().toString().substring(0, 8);
         governmentDao.submitProposal(new FormulaProposal(
                 id, governmentId, agentId, description, parameterName, proposedValue, currentTick));
@@ -69,47 +73,22 @@ public class GovernanceServiceImpl implements GovernanceService {
 
     @Override
     public void processProposals(int currentTick) {
-        for (Government gov : governmentDao.getAllGovernments()) {
-            for (FormulaProposal proposal : governmentDao.getActiveProposals(gov.id())) {
-                int age = currentTick - proposal.tickProposed();
-
-                switch (proposal.status()) {
-                    case PENDING -> {
-                        proposal.setStatus(FormulaProposal.Status.COMMENT_PERIOD);
-                    }
-                    case COMMENT_PERIOD -> {
-                        if (age >= COMMENT_PERIOD_TICKS) {
-                            proposal.setStatus(FormulaProposal.Status.VOTING);
-                        }
-                    }
-                    case VOTING -> {
-                        if (age >= COMMENT_PERIOD_TICKS + VOTING_PERIOD_TICKS) {
-                            if (proposal.approvalRate() >= APPROVAL_THRESHOLD) {
-                                proposal.setStatus(FormulaProposal.Status.APPROVED);
-                                proposal.setImplementationTick(currentTick + IMPLEMENTATION_DELAY_TICKS);
-                            } else {
-                                proposal.setStatus(FormulaProposal.Status.REJECTED);
-                            }
-                        }
-                    }
-                    case APPROVED -> {
-                        if (currentTick >= proposal.implementationTick()) {
-                            applyProposal(gov, proposal);
-                            proposal.setStatus(FormulaProposal.Status.IMPLEMENTED);
-                        }
-                    }
-                    default -> {}
-                }
-            }
-        }
+        // Proposals are recorded but not auto-processed.
+        // Agent-created governance institutions decide how to handle them.
+        // The Governance GM reviews proposals during yearly audits.
     }
 
     @Override
     public void fileDispute(String agentId, String governmentId, String type,
                              String description, int currentTick) {
+        // Disputes are filed and recorded in the communication log.
+        // Resolution depends on agent-built institutions:
+        //   - If an arbitration service exists, the dispute goes there
+        //   - If not, it's just a public record that affects reputation
         DisputeCase.DisputeType disputeType = switch (type.toUpperCase()) {
             case "MEASUREMENT" -> DisputeCase.DisputeType.MEASUREMENT;
             case "FORMULA" -> DisputeCase.DisputeType.FORMULA;
+            case "CONTRACT" -> DisputeCase.DisputeType.WRONGFUL_SCORING;
             default -> DisputeCase.DisputeType.WRONGFUL_SCORING;
         };
         governmentDao.fileDispute(new DisputeCase(
@@ -120,48 +99,18 @@ public class GovernanceServiceImpl implements GovernanceService {
 
     @Override
     public void processDisputes(int currentTick) {
-        for (Government gov : governmentDao.getAllGovernments()) {
-            for (DisputeCase dispute : governmentDao.getOpenDisputes(gov.id())) {
-                int age = currentTick - dispute.tickFiled();
-                if (dispute.status() == DisputeCase.DisputeStatus.FILED) {
-                    governmentDao.updateDispute(
-                            dispute.withStatus(DisputeCase.DisputeStatus.UNDER_REVIEW, null));
-                } else if (dispute.status() == DisputeCase.DisputeStatus.UNDER_REVIEW && age >= 6) {
-                    // Auto-resolve after review period (placeholder for LLM-driven adjudication)
-                    governmentDao.updateDispute(
-                            dispute.withStatus(DisputeCase.DisputeStatus.RESOLVED,
-                                    "Reviewed and resolved after " + age + " ticks."));
-                }
-            }
-        }
+        // Disputes are not auto-resolved. They remain as public records.
+        // Agent-created arbitration services handle resolution.
     }
 
     @Override
     public String getAgentGovernment(String agentId) {
-        Agent agent = agentDao.getAgent(agentId);
-        if (agent == null) return "default";
-        return governmentDao.getGovernmentForTile(agent.state().location())
-                .map(Government::id).orElse("default");
+        return "default"; // single global MEAS zone
     }
 
     @Override
     public void migrateAgent(String agentId, String targetGovernmentId) {
-        // Migration is handled by moving the agent to a tile in the target government's region
-        Agent agent = agentDao.getAgent(agentId);
-        Government target = governmentDao.getGovernment(targetGovernmentId).orElse(null);
-        if (agent == null || target == null) return;
-
-        // Move to center of target region
-        int centerQ = (target.regionMin().q() + target.regionMax().q()) / 2;
-        int centerR = (target.regionMin().r() + target.regionMax().r()) / 2;
-        agent.state().setLocation(new HexCoord(centerQ, centerR));
-    }
-
-    private void applyProposal(Government gov, FormulaProposal proposal) {
-        switch (proposal.parameterName()) {
-            case "efWeight" -> gov.setEfWeight(proposal.proposedValue());
-            case "ubiMultiplier" -> gov.setUbiMultiplier(proposal.proposedValue());
-            case "domainTwoStrictness" -> gov.setDomainTwoStrictness(proposal.proposedValue());
-        }
+        // Migration is just moving — agents move freely.
+        // No government boundaries to cross in a single MEAS zone.
     }
 }
