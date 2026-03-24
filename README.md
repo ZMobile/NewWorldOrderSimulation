@@ -298,6 +298,14 @@ Service categories: financial, logistics, healthcare, education, legal, security
 | 10 | Events | Partial | GM: research results, novel actions, spontaneous world events, coherence audit |
 | 11 | Measurement | No | Metrics collected, snapshots saved |
 
+### Property Rights & Labor Market
+
+**Tile claims**: Agents don't own entire tiles — they own **slots** (claims). A grassland tile has 8 capacity slots. Multiple agents can own claims on the same tile. Claims can be purchased, sold, rented, or left empty. Infrastructure and services require a claim to operate on. This creates real location scarcity, rent-seeking, and property markets.
+
+**Contracts**: General-purpose binding agreements between agents. Employment, rental, trade agreements, service subscriptions, partnerships. Standard contracts are between agents (no GM needed). GM involved only for disputes and novel terms. Contracts process each tick: wages paid, rent collected, breaches detected.
+
+**Labor market**: Agents hire other agents via employment contracts. Employer pays wages, employee works. When employer buys robots and fires workers, the LD axis generates UBI diversion. Unemployed agents fall back to UBI. This is how the Labor Displacement axis actually gets tested.
+
 ### Running It
 
 ```bash
@@ -354,6 +362,9 @@ All core systems built and compiling (BUILD SUCCESSFUL, 35 tests):
 - **Risk System**: Universal (all entity types), evolution model with GM-set parameters, true vs perceived risk, cascading effects, probability evolves with age/usage/maintenance/environment/neighbors
 - **Externalities**: Universal byproduct system with true/measured/perceived pollution layers. Hidden externalities go undetected until consequences emerge. Feeds into EF scoring.
 - **Services**: Agent-created services (banking, logistics, insurance, education, etc.) — not hardcoded. GM evaluates proposals, sets properties. Competitive service market with reputation system.
+- **Property**: Tile claim system — agents own slots, not tiles. Purchase, sell, rent. Location scarcity drives property markets.
+- **Contracts**: Employment, rental, trade, subscriptions, partnerships. Wages, rent, breach detection, termination.
+- **Labor Market**: Agents hire each other. Wages flow. Robot displacement triggers LD axis. Unemployment → UBI fallback.
 - **Communication**: Observable message log — agent-to-agent, agent-to-GM, GM internal reasoning, multi-turn conversations
 - **Governance**: Multi-government, voting lifecycle, judicial disputes, agent migration
 - **Metrics/Output**: Gini, satisfaction, env health — CSV export, JSON snapshots, comparison framework

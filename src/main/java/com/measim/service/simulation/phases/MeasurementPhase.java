@@ -18,7 +18,7 @@ public class MeasurementPhase implements TickPhase {
     }
 
     @Override public String name() { return "Measurement"; }
-    @Override public int order() { return 11; }
+    @Override public int order() { return 120; }
 
     @Override
     public void execute(int currentTick) {

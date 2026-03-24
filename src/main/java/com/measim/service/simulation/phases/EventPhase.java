@@ -52,7 +52,7 @@ public class EventPhase implements TickPhase {
     }
 
     @Override public String name() { return "Events"; }
-    @Override public int order() { return 10; }
+    @Override public int order() { return 110; }
 
     @Override
     public void execute(int currentTick) {

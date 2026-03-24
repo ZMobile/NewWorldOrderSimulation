@@ -26,7 +26,7 @@ public class EnvironmentPhase implements TickPhase {
     }
 
     @Override public String name() { return "Environment"; }
-    @Override public int order() { return 8; }
+    @Override public int order() { return 90; }
 
     @Override
     public void execute(int currentTick) {

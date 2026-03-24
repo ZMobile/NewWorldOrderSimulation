@@ -22,7 +22,7 @@ public class ScoringPhase implements TickPhase {
     }
 
     @Override public String name() { return "Scoring"; }
-    @Override public int order() { return 5; }
+    @Override public int order() { return 60; }
 
     @Override
     public void execute(int currentTick) {

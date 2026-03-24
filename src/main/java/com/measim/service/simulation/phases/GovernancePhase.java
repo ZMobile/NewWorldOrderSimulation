@@ -15,7 +15,7 @@ public class GovernancePhase implements TickPhase {
     }
 
     @Override public String name() { return "Governance"; }
-    @Override public int order() { return 7; }
+    @Override public int order() { return 80; }
 
     @Override
     public void execute(int currentTick) {

@@ -26,7 +26,7 @@ public class DecisionPhase implements TickPhase {
     }
 
     @Override public String name() { return "Decision"; }
-    @Override public int order() { return 2; }
+    @Override public int order() { return 20; }
 
     @Override
     public void execute(int currentTick) {

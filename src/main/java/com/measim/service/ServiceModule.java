@@ -7,6 +7,8 @@ import com.measim.dao.DaoModule;
 import com.measim.service.agent.*;
 import com.measim.service.agentservice.*;
 import com.measim.service.communication.*;
+import com.measim.service.contract.*;
+import com.measim.service.property.*;
 import com.measim.service.economy.*;
 import com.measim.service.externality.*;
 import com.measim.service.gamemaster.*;
@@ -65,6 +67,10 @@ public class ServiceModule extends AbstractModule {
         // Agent service manager (agent-created services: banking, logistics, etc.)
         bind(AgentServiceManager.class).to(AgentServiceManagerImpl.class).in(Singleton.class);
 
+        // Property and contracts
+        bind(PropertyService.class).to(PropertyServiceImpl.class).in(Singleton.class);
+        bind(ContractService.class).to(ContractServiceImpl.class).in(Singleton.class);
+
         // Governance services
         bind(GovernanceService.class).to(GovernanceServiceImpl.class).in(Singleton.class);
 
@@ -84,6 +90,7 @@ public class ServiceModule extends AbstractModule {
         phaseBinder.addBinding().to(DecisionPhase.class).in(Singleton.class);
         phaseBinder.addBinding().to(ActionExecutionPhase.class).in(Singleton.class);
         phaseBinder.addBinding().to(MarketResolutionPhase.class).in(Singleton.class);
+        phaseBinder.addBinding().to(ContractPhase.class).in(Singleton.class);
         phaseBinder.addBinding().to(ScoringPhase.class).in(Singleton.class);
         phaseBinder.addBinding().to(UbiDistributionPhase.class).in(Singleton.class);
         phaseBinder.addBinding().to(GovernancePhase.class).in(Singleton.class);

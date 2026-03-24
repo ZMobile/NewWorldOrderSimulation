@@ -69,7 +69,7 @@ public class ActionExecutionPhase implements TickPhase {
     }
 
     @Override public String name() { return "Action Execution"; }
-    @Override public int order() { return 3; }
+    @Override public int order() { return 30; }
 
     @Override
     public void execute(int currentTick) {

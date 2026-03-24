@@ -36,7 +36,7 @@ public class PerceptionPhase implements TickPhase {
     }
 
     @Override public String name() { return "Perception"; }
-    @Override public int order() { return 1; }
+    @Override public int order() { return 10; }
 
     @Override
     public void execute(int currentTick) {

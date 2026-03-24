@@ -25,7 +25,7 @@ public class UbiDistributionPhase implements TickPhase {
     }
 
     @Override public String name() { return "UBI Distribution"; }
-    @Override public int order() { return 6; }
+    @Override public int order() { return 70; }
 
     @Override
     public void execute(int currentTick) {

@@ -28,7 +28,7 @@ public class MarketResolutionPhase implements TickPhase {
     }
 
     @Override public String name() { return "Market Resolution"; }
-    @Override public int order() { return 4; }
+    @Override public int order() { return 40; }
 
     @Override
     public void execute(int currentTick) {

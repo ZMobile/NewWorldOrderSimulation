@@ -18,7 +18,7 @@ public class RiskPhase implements TickPhase {
     public RiskPhase(RiskService riskService) { this.riskService = riskService; }
 
     @Override public String name() { return "Risk"; }
-    @Override public int order() { return 9; } // between environment (8) and events (10-was-9)
+    @Override public int order() { return 100; }
 
     @Override
     public void execute(int currentTick) {

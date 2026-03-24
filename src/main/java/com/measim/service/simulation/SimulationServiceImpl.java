@@ -9,6 +9,7 @@ import com.measim.service.governance.GovernanceService;
 import com.measim.service.comparison.ComparisonService;
 import com.measim.service.infrastructure.InfrastructureService;
 import com.measim.service.metrics.MetricsService;
+import com.measim.service.property.PropertyService;
 import com.measim.service.snapshot.SnapshotService;
 import com.measim.service.world.WorldGenerationService;
 import jakarta.inject.Inject;
@@ -30,6 +31,7 @@ public class SimulationServiceImpl implements SimulationService {
     private final GameMasterService gameMasterService;
     private final GovernanceService governanceService;
     private final InfrastructureService infrastructureService;
+    private final PropertyService propertyService;
     private final MetricsService metricsService;
     private final SnapshotService snapshotService;
     private final ComparisonService comparisonService;
@@ -47,6 +49,7 @@ public class SimulationServiceImpl implements SimulationService {
                                   GameMasterService gameMasterService,
                                   GovernanceService governanceService,
                                   InfrastructureService infrastructureService,
+                                  PropertyService propertyService,
                                   MetricsService metricsService,
                                   SnapshotService snapshotService,
                                   ComparisonService comparisonService,
@@ -60,6 +63,7 @@ public class SimulationServiceImpl implements SimulationService {
         this.gameMasterService = gameMasterService;
         this.governanceService = governanceService;
         this.infrastructureService = infrastructureService;
+        this.propertyService = propertyService;
         this.metricsService = metricsService;
         this.snapshotService = snapshotService;
         this.comparisonService = comparisonService;
@@ -93,10 +97,10 @@ public class SimulationServiceImpl implements SimulationService {
         if (marketDao.getAllMarkets().isEmpty()) marketDao.getOrCreateMarket("default");
 
         // Initialize tech tree and governance
-        // Note: NO predefined infrastructure types. All infrastructure is created dynamically
-        // by GM evaluation when agents propose solutions. The GM is the physics engine.
+        // Initialize systems
         gameMasterService.initializeBaseTechTree();
         governanceService.initializeGovernments();
+        propertyService.initializePropertySystem();
 
         System.out.println("Spawning " + config.agentCount() + " agents...");
         agentSpawningService.spawnAgents();
