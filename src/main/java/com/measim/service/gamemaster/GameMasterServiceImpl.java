@@ -402,7 +402,7 @@ public class GameMasterServiceImpl implements GameMasterService {
         if (worldState.averageSatisfaction() < 0.25 && fallbackRandom.nextDouble() < 0.25) {
             events.add(new WorldEvent(
                     "unrest_" + currentTick, WorldEvent.WorldEventType.SOCIAL_UNREST,
-                    "Social Unrest", "Widespread dissatisfaction has led to protests and work stoppages.",
+                    "Social Unrest", "Widespread widespread dissatisfaction has led to protests and work stoppages.",
                     currentTick, 0.5, List.of(), Map.of()));
         }
 

@@ -144,8 +144,34 @@ Each agent archetype is designed to stress-test a specific aspect of the system:
 | **Politician** | Coalition building, governance capture attempts |
 | **Philanthropist** | Wealth redistribution, public goods funding |
 | **Automator** | Labor displacement dynamics, robot adoption curves |
+| **Worker** | Stable work relations, fair wages, labor market dynamics |
+| **Speculator** | Asset trading, property flipping, price exploitation |
+| **Homesteader** | Self-sufficiency, minimal market participation |
+| **Provider** | Service creation and operation (banking, logistics, etc.) |
+| **Landlord** | Property acquisition, rent-seeking — does RC axis counter this? |
+| **Organizer** | Multi-agent alliances, collective bargaining, coordination |
 
-If the Exploiter finds a loophole, that's a bug to fix. If the Free Rider starves, UBI is miscalibrated. If the Accumulator breaks through the RC ceiling, the formula needs adjustment.
+The distribution mirrors reality: ~15% Workers (largest group), ~7% Free Riders, ~6% each for Entrepreneurs/Providers/Artisans, smaller shares for specialized roles. This tests MEAS against a realistic population, not an entrepreneurship fantasy.
+
+If the Exploiter finds a loophole, that's a bug to fix. If the Free Rider starves, UBI is miscalibrated. If the Accumulator breaks through the RC ceiling, the formula needs adjustment. If the Worker can't find stable employment, the labor market isn't functioning. If the Landlord monopolizes property, the RC axis needs tuning.
+
+### Agent Design Philosophy
+
+Agents are **rational strategic players in a complex game**, not simulated humans with fake emotions. LLMs cannot accurately simulate human emotion, and pretending they can would introduce a known inaccuracy that undermines the simulation's scientific value.
+
+What agents DO have:
+- **Strategic reasoning** based on archetype disposition and game state
+- **Satisfaction** as a rational assessment: "my material conditions meet/don't meet my objectives" — not a feeling, but a measurable evaluation of outcomes vs expectations
+- **Opinions** about other agents based on observed behavior (an agent that defaulted on a contract is rationally assessed as unreliable)
+- **Preferences** driven by archetype (a Worker prefers stable income; a Speculator prefers volatile markets)
+- **Specialization advantage** — the GM treats experienced agents more favorably (better risk profiles, better evaluations)
+
+What agents DON'T have:
+- Simulated emotions (joy, anger, love, fear)
+- Psychological states that LLMs can't genuinely model
+- Irrational behavior (agents play optimally for their archetype)
+
+The simulation measures **material outcomes** (Gini, food access, environmental health, economic mobility). Humans judge whether those outcomes represent a society they'd want to live in. The agents test the system; they don't evaluate it.
 
 ### The Game Master: An AI Dungeon Master
 

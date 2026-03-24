@@ -388,6 +388,10 @@ public class ActionExecutionPhase implements TickPhase {
             case OPTIMIZER -> agent.state().credits() > 3000;
             case FREE_RIDER -> agent.state().satisfaction() < 0.3;
             case REGULATOR -> currentTick % 12 == 0;
+            case SPECULATOR -> agent.state().credits() > 500;
+            case LANDLORD -> agent.state().credits() > 400;
+            case PROVIDER -> agent.state().credits() > 300 && currentTick % 6 == 0;
+            case ORGANIZER -> currentTick % 12 == 0;
             default -> false;
         };
     }
@@ -406,6 +410,12 @@ public class ActionExecutionPhase implements TickPhase {
             case ENTREPRENEUR -> NovelAction.NovelActionType.NOVEL_BUSINESS;
             case INNOVATOR -> NovelAction.NovelActionType.SPECULATIVE_RESEARCH;
             case COOPERATOR -> NovelAction.NovelActionType.PUBLIC_WORKS;
+            case WORKER -> NovelAction.NovelActionType.OPERATIONAL_RESTRUCTURE;
+            case SPECULATOR -> NovelAction.NovelActionType.FINANCIAL_INNOVATION;
+            case HOMESTEADER -> NovelAction.NovelActionType.NOVEL_BUSINESS;
+            case PROVIDER -> NovelAction.NovelActionType.NOVEL_BUSINESS;
+            case LANDLORD -> NovelAction.NovelActionType.FINANCIAL_INNOVATION;
+            case ORGANIZER -> NovelAction.NovelActionType.POLITICAL_CAMPAIGN;
         };
     }
 
@@ -423,6 +433,12 @@ public class ActionExecutionPhase implements TickPhase {
             case ENTREPRENEUR -> "Launching innovative business model";
             case INNOVATOR -> "Pursuing speculative cross-domain research";
             case COOPERATOR -> "Organizing community mutual aid";
+            case WORKER -> "Negotiating better work terms";
+            case SPECULATOR -> "Trading property claims for profit";
+            case HOMESTEADER -> "Expanding self-sufficient operations";
+            case PROVIDER -> "Launching new service for agents";
+            case LANDLORD -> "Acquiring and developing property";
+            case ORGANIZER -> "Forming multi-agent alliance";
         };
     }
 }

@@ -12,7 +12,15 @@ public enum Archetype {
     ARTISAN(0.3, 0.5, 0.4, 0.5, 0.7, "Moderate ambition, quality-focused. Non-maximizing economic behavior."),
     POLITICIAN(0.4, 0.6, 0.5, 0.3, 0.5, "High social engagement. Builds coalitions and attempts governance capture."),
     PHILANTHROPIST(0.3, 0.2, 0.9, 0.3, 0.8, "High altruism, low personal ambition. Redistributes wealth, funds public goods."),
-    AUTOMATOR(0.6, 0.8, 0.2, 0.7, 0.6, "High ambition, tech-focused. Drives robot adoption and labor displacement.");
+    AUTOMATOR(0.6, 0.8, 0.2, 0.7, 0.6, "High ambition, tech-focused. Drives robot adoption and labor displacement."),
+
+    // Additional archetypes for full economic behavior spectrum
+    WORKER(0.2, 0.4, 0.5, 0.2, 0.8, "Seeks stable work relations and fair wages. Tests labor market and employment dynamics."),
+    SPECULATOR(0.9, 0.8, 0.05, 0.4, 0.4, "Extreme risk tolerance. Trades assets, buys/sells property claims, exploits price differences."),
+    HOMESTEADER(0.2, 0.4, 0.3, 0.4, 0.6, "Self-sufficient. Extracts, produces, and consumes locally. Minimal market participation."),
+    PROVIDER(0.3, 0.5, 0.6, 0.5, 0.7, "Creates and operates services for other agents. Tests service economy dynamics."),
+    LANDLORD(0.3, 0.7, 0.1, 0.2, 0.7, "Acquires property claims and rents them. Tests property market and rent-seeking under MEAS."),
+    ORGANIZER(0.3, 0.5, 0.7, 0.5, 0.6, "Builds lasting alliances and multi-agent agreements. Tests collective action and coordination.");
 
     private final double riskTolerance;
     private final double ambition;

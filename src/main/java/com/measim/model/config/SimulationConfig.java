@@ -51,17 +51,24 @@ public class SimulationConfig {
 
     public SimulationConfig() {
         archetypeDistribution.put("OPTIMIZER", 0.10);
-        archetypeDistribution.put("ENTREPRENEUR", 0.12);
-        archetypeDistribution.put("COOPERATOR", 0.15);
-        archetypeDistribution.put("FREE_RIDER", 0.08);
-        archetypeDistribution.put("REGULATOR", 0.05);
-        archetypeDistribution.put("INNOVATOR", 0.08);
-        archetypeDistribution.put("ACCUMULATOR", 0.07);
-        archetypeDistribution.put("EXPLOITER", 0.05);
-        archetypeDistribution.put("ARTISAN", 0.12);
-        archetypeDistribution.put("POLITICIAN", 0.05);
-        archetypeDistribution.put("PHILANTHROPIST", 0.05);
-        archetypeDistribution.put("AUTOMATOR", 0.08);
+        archetypeDistribution.put("ENTREPRENEUR", 0.06);
+        archetypeDistribution.put("INNOVATOR", 0.04);
+        archetypeDistribution.put("ACCUMULATOR", 0.04);
+        archetypeDistribution.put("AUTOMATOR", 0.04);
+        archetypeDistribution.put("OPTIMIZER", 0.05);
+        archetypeDistribution.put("SPECULATOR", 0.03);
+        archetypeDistribution.put("WORKER", 0.15);
+        archetypeDistribution.put("PROVIDER", 0.06);
+        archetypeDistribution.put("ARTISAN", 0.06);
+        archetypeDistribution.put("HOMESTEADER", 0.05);
+        archetypeDistribution.put("COOPERATOR", 0.08);
+        archetypeDistribution.put("ORGANIZER", 0.04);
+        archetypeDistribution.put("POLITICIAN", 0.03);
+        archetypeDistribution.put("REGULATOR", 0.03);
+        archetypeDistribution.put("PHILANTHROPIST", 0.03);
+        archetypeDistribution.put("LANDLORD", 0.04);
+        archetypeDistribution.put("EXPLOITER", 0.04);
+        archetypeDistribution.put("FREE_RIDER", 0.07);
     }
 
     @SuppressWarnings("unchecked")

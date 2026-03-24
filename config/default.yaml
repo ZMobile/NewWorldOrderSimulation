@@ -10,18 +10,30 @@ world:
 agents:
   count: 200
   archetypeDistribution:
-    OPTIMIZER: 0.10
-    ENTREPRENEUR: 0.12
-    COOPERATOR: 0.15
-    FREE_RIDER: 0.08
-    REGULATOR: 0.05
-    INNOVATOR: 0.08
-    ACCUMULATOR: 0.07
-    EXPLOITER: 0.05
-    ARTISAN: 0.12
-    POLITICIAN: 0.05
-    PHILANTHROPIST: 0.05
-    AUTOMATOR: 0.08
+    # Capital/business-focused
+    ENTREPRENEUR: 0.06
+    INNOVATOR: 0.04
+    ACCUMULATOR: 0.04
+    AUTOMATOR: 0.04
+    OPTIMIZER: 0.05
+    SPECULATOR: 0.03
+    # Labor/service-focused
+    WORKER: 0.15
+    PROVIDER: 0.06
+    ARTISAN: 0.06
+    HOMESTEADER: 0.05
+    # Community/governance-focused
+    COOPERATOR: 0.08
+    ORGANIZER: 0.04
+    POLITICIAN: 0.03
+    REGULATOR: 0.03
+    PHILANTHROPIST: 0.03
+    # Property-focused
+    LANDLORD: 0.04
+    # Adversarial/passive
+    EXPLOITER: 0.04
+    FREE_RIDER: 0.07
+    # Total: ~1.00 (rounding)
   perceptionRadius: 7
 
 robots:

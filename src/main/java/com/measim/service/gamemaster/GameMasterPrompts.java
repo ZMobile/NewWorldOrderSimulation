@@ -214,7 +214,7 @@ public final class GameMasterPrompts {
 
                 Examples of corrections:
                 - If env health is 0.1 but no crisis events have fired, something is wrong
-                - If Gini is 0.8 and satisfaction is 0.9, agents should be more unhappy
+                - If Gini is 0.8 and satisfaction is 0.9, welfare should be lower
                 - If there are 500 robots but no increase in LD diversion, scoring may be miscalibrated
                 - If all agents are clustered in one area, resources elsewhere should be regenerating faster
 
