@@ -303,11 +303,32 @@ public class GameMasterServiceImpl implements GameMasterService {
             JsonNode root = MAPPER.readTree(json);
 
             if (root.has("needsClarification") && root.path("needsClarification").asBoolean()) {
-                commService.logThought(GM_ID, "Need clarification: " + root.path("question").asText(),
-                        Message.Channel.GM_INTERNAL, currentTick);
-                // In a multi-turn conversation, this would trigger a follow-up
-                // For now, fall back to deterministic
-                return evaluateInfrastructureDeterministic(proposal, currentTick);
+                String question = root.path("question").asText("Please provide more details.");
+                commService.logThought(GM_ID, "Asking clarification: " + question,
+                        Message.Channel.GM_TO_AGENT, currentTick);
+
+                // Generate agent's clarification response
+                String agentClarification = generateAgentClarification(
+                        proposal.agentId(), question, proposal.proposedName(),
+                        proposal.proposedDescription(), currentTick);
+
+                commService.logThought(proposal.agentId(), "Clarifying: " + agentClarification,
+                        Message.Channel.AGENT_TO_GM, currentTick);
+
+                // Send clarification back to GM for final evaluation
+                String followUp = "Agent's clarification: " + agentClarification
+                        + "\n\nNow provide your final evaluation as JSON (feasible/not feasible).";
+                LlmResponse followUpResponse = llmService.queryGameMaster(
+                        GameMasterPrompts.infrastructureEvalSystemPrompt(), followUp).join();
+
+                commService.logThought(GM_ID, followUpResponse.content(), Message.Channel.GM_INTERNAL, currentTick);
+
+                // Parse the follow-up response (if still needs clarification, fall back to deterministic)
+                JsonNode followUpRoot = MAPPER.readTree(stripMarkdown(followUpResponse.content()));
+                if (followUpRoot.has("needsClarification")) {
+                    return evaluateInfrastructureDeterministic(proposal, currentTick);
+                }
+                root = followUpRoot; // Continue with normal parsing below
             }
 
             if (!root.path("feasible").asBoolean(false)) {
@@ -493,6 +514,42 @@ public class GameMasterServiceImpl implements GameMasterService {
     @Override public int discoveryCount() { return techRegistry.discoveryCount(); }
 
     // ========== INTERNAL HELPERS ==========
+
+    /**
+     * Generate an agent's response to a GM clarification question.
+     * Uses agent LLM if available, otherwise constructs from proposal details.
+     * Agent can only respond with information they would naturally have.
+     */
+    private String generateAgentClarification(String agentId, String question,
+                                               String proposalName, String proposalDescription,
+                                               int currentTick) {
+        if (!llmService.isAvailable()) {
+            // Deterministic: repeat proposal details as clarification
+            return String.format("Regarding my proposal '%s': %s. I plan to use locally available materials and maintain it regularly.",
+                    proposalName, proposalDescription);
+        }
+
+        try {
+            var agent = agentDao.getAgent(agentId);
+            String archetype = agent != null ? agent.identity().archetype().name() : "Unknown";
+
+            String systemPrompt = String.format("""
+                    You are agent %s (archetype: %s) in MeaSim. The Game Master asked you a clarification
+                    question about your proposal. Answer based on what you would reasonably know —
+                    your plans, your intentions, your materials, your maintenance approach.
+                    Keep it brief (1-2 sentences). Only output your answer, no JSON.
+                    """, agentId, archetype);
+            String userPrompt = String.format("""
+                    Your proposal: %s — %s
+                    GM's question: %s
+                    """, proposalName, proposalDescription, question);
+
+            LlmResponse response = llmService.queryGameMaster(systemPrompt, userPrompt).join();
+            return response.content().trim();
+        } catch (Exception e) {
+            return "I plan to build " + proposalName + " using standard materials and maintain it regularly.";
+        }
+    }
 
     private String getAgentExperience(String agentId) {
         var agent = agentDao.getAgent(agentId);

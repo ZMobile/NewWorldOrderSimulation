@@ -192,6 +192,14 @@ public class AgentServiceManagerImpl implements AgentServiceManager {
                       ]
                     }
                     Only output JSON.
+
+                    CRITICAL — INFORMATION BOUNDARIES:
+                    If you ask the agent clarification questions, NEVER reveal:
+                    - True risk profiles or probabilities
+                    - Hidden byproducts or externalities
+                    - Other agents' information or strategies
+                    - Internal evaluation reasoning or scores
+                    Only ask about: their plans, materials, methods, maintenance approach.
                     """;
 
             Agent proposer = agentDao.getAgent(proposal.agentId());

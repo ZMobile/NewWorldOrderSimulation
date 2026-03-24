@@ -13,6 +13,31 @@ public final class GameMasterPrompts {
 
     private GameMasterPrompts() {}
 
+    /**
+     * Information boundary rules included in all GM prompts.
+     * The GM is the referee — it knows everything but must not leak
+     * privileged information to agents.
+     */
+    private static final String INFORMATION_BOUNDARY = """
+
+            CRITICAL — INFORMATION BOUNDARIES:
+            When asking clarification questions to agents, you may ONLY ask about:
+            - Their intentions and plans (what they want to do and why)
+            - Their proposed materials, methods, and design
+            - Their maintenance and operating plans
+
+            You must NEVER reveal to agents:
+            - True risk profiles or probabilities (they must discover risk through experience)
+            - Hidden byproducts or externalities (they must observe consequences to learn)
+            - Other agents' information, strategies, or failures
+            - The agent's own experience stats or internal scores (they know what they remember, not numbers)
+            - Your internal evaluation reasoning or how you weight factors
+            - Future world events or GM plans
+
+            Your clarification questions should only ask for information the agent naturally possesses.
+            Your internal reasoning goes to the GM_INTERNAL channel, never to agents.
+            """;
+
     // ========== RESEARCH ADJUDICATION ==========
 
     public static String researchSystemPrompt() {
@@ -33,7 +58,7 @@ public final class GameMasterPrompts {
                 If succeeds: {"success": true, "name": "...", "description": "...", "category": 1-4, "inputs": [...], "outputs": [...], "pollutionOutput": N.N, "productionTimeTicks": N, "prerequisiteTechs": [...], "effectType": null or "...", "effectMagnitude": null or N.N, "risks": [{"name":"...","category":"TECHNOLOGICAL|ENVIRONMENTAL|...","baseProbability":0.01,"agingRate":0.02,"minSeverity":0.1,"maxSeverity":0.5,"canCascade":false}], "byproducts": [{"name":"...","type":"AIR_POLLUTION|WATER_CONTAMINATION|CHEMICAL|...","visibility":"VISIBLE|DELAYED|HIDDEN|CUMULATIVE","baseAmountPerTick":0.01,"diffusionRadius":2,"accumulationRate":0.5}]}
                 If fails: {"success": false, "reason": "..."}
                 Only output JSON.
-                """;
+                """ + INFORMATION_BOUNDARY;
     }
 
     public static String researchUserPrompt(ResearchProposal proposal,
@@ -89,7 +114,7 @@ public final class GameMasterPrompts {
                   "byproducts": [{"name":"...","type":"AIR_POLLUTION|WATER_CONTAMINATION|SOIL_DEGRADATION|NOISE|WASTE|CHEMICAL|SOCIAL|CUSTOM","visibility":"VISIBLE|DELAYED|HIDDEN|CUMULATIVE","baseAmountPerTick":0.01,"diffusionRadius":2,"accumulationRate":0.5}]
                 }
                 Only output JSON.
-                """;
+                """ + INFORMATION_BOUNDARY;
     }
 
     public static String novelActionUserPrompt(NovelAction action, WorldState worldState,
@@ -161,7 +186,7 @@ public final class GameMasterPrompts {
                 }
                 Return {"events": []} if nothing should happen this tick. MOST ticks should be empty.
                 Only output JSON.
-                """;
+                """ + INFORMATION_BOUNDARY;
     }
 
     public static String worldEventUserPrompt(WorldState state) {
@@ -226,7 +251,7 @@ public final class GameMasterPrompts {
                   ]
                 }
                 Only output JSON.
-                """;
+                """ + INFORMATION_BOUNDARY;
     }
 
     // ========== INFRASTRUCTURE EVALUATION ==========
@@ -282,7 +307,7 @@ public final class GameMasterPrompts {
                 {"needsClarification": true, "question": "What do you need to know?"}
 
                 Only output JSON.
-                """;
+                """ + INFORMATION_BOUNDARY;
     }
 
     public static String infrastructureEvalUserPrompt(InfrastructureProposal proposal,
