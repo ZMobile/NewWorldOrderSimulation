@@ -1,7 +1,7 @@
 world:
   seed: 42
-  width: 100
-  height: 100
+  width: 50
+  height: 50
   resourceDensity: 0.3
   terrainNoise:
     octaves: 6

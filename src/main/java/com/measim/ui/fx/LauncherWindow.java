@@ -48,9 +48,9 @@ public class LauncherWindow extends Application {
         Label worldHeader = new Label("World");
         worldHeader.setFont(Font.font("System", FontWeight.BOLD, 14));
 
-        Spinner<Integer> worldWidth = new Spinner<>(20, 500, defaults.worldWidth(), 10);
-        Spinner<Integer> worldHeight = new Spinner<>(20, 500, defaults.worldHeight(), 10);
-        Spinner<Long> seed = new Spinner<>(1, 99999, defaults.seed(), 1);
+        Spinner<Integer> worldWidth = new Spinner<>(20, 500, Math.min(defaults.worldWidth(), 50), 10);
+        Spinner<Integer> worldHeight = new Spinner<>(20, 500, Math.min(defaults.worldHeight(), 50), 10);
+        Spinner<Integer> seed = new Spinner<>(1, 99999, (int) defaults.seed(), 1);
         worldWidth.setEditable(true);
         worldHeight.setEditable(true);
         seed.setEditable(true);
@@ -131,7 +131,7 @@ public class LauncherWindow extends Application {
                     key,
                     modelChoice.getValue(),
                     budget.getValue(),
-                    seed.getValue()
+                    (long) seed.getValue()
             );
 
             stage.close();

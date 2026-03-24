@@ -9,8 +9,8 @@ import java.util.*;
 public class SimulationConfig {
 
     private long seed = 42;
-    private int worldWidth = 200;
-    private int worldHeight = 200;
+    private int worldWidth = 50;
+    private int worldHeight = 50;
     private double resourceDensity = 0.3;
     private int noiseOctaves = 6;
     private double noisePersistence = 0.5;
