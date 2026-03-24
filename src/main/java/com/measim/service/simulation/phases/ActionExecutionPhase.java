@@ -485,16 +485,26 @@ public class ActionExecutionPhase implements TickPhase {
                         0.5, null, 0));
             }
             case AgentAction.ClaimProperty claim -> {
-                // First-come-first-served property registration
-                // Cost flows to UBI pool (public revenue)
-                var claimResult = propertyService.purchaseClaim(agent.id(), claim.tile(), 1, currentTick);
-                if (claimResult.isPresent()) {
+                // GOVERNANCE GM validates property claims
+                // Checks: tile available? competing claims? agent can afford?
+                int available = propertyService.availableSlots(claim.tile());
+                double price = propertyService.getClaimBasePrice(claim.tile());
+                if (available > 0 && agent.state().credits() >= price) {
+                    var claimResult = propertyService.purchaseClaim(agent.id(), claim.tile(), 1, currentTick);
+                    if (claimResult.isPresent()) {
+                        agent.addMemory(new MemoryEntry(currentTick, "PROPERTY",
+                                "Claimed property at (" + claim.tile().q() + "," + claim.tile().r() + ") for " +
+                                String.format("%.0f", price) + " credits",
+                                0.7, null, -price));
+                        commService.sendAgentMessage(agent.id(), "ALL_AT_TILE",
+                                "Registered property claim at (" + claim.tile().q() + "," + claim.tile().r() + ")",
+                                com.measim.model.communication.Message.MessageType.INFORMATION_SHARE, currentTick);
+                    }
+                } else {
                     agent.addMemory(new MemoryEntry(currentTick, "PROPERTY",
-                            "Claimed property at (" + claim.tile().q() + "," + claim.tile().r() + ")",
-                            0.7, null, -propertyService.getClaimBasePrice(claim.tile())));
-                    commService.sendAgentMessage(agent.id(), "ALL_AT_TILE",
-                            "Registered property claim at (" + claim.tile().q() + "," + claim.tile().r() + ")",
-                            com.measim.model.communication.Message.MessageType.INFORMATION_SHARE, currentTick);
+                            "Failed to claim (" + claim.tile().q() + "," + claim.tile().r() + "): " +
+                            (available <= 0 ? "no slots available" : "insufficient credits (need " + String.format("%.0f", price) + ")"),
+                            0.4, null, 0));
                 }
             }
             case AgentAction.ExtractResource ignored -> {}

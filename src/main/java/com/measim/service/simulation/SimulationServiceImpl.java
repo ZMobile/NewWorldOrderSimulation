@@ -87,6 +87,22 @@ public class SimulationServiceImpl implements SimulationService {
     public void initialize() {
         if (initialized) return;
         initialized = true;
+        // Clear stale output from previous runs
+        try {
+            java.nio.file.Path outputDir = java.nio.file.Path.of("output");
+            if (java.nio.file.Files.exists(outputDir)) {
+                for (String file : new String[]{"metrics.csv", "metrics_live.csv", "communication_log.json"}) {
+                    java.nio.file.Files.deleteIfExists(outputDir.resolve(file));
+                }
+                java.nio.file.Path snapshotDir = outputDir.resolve("snapshots");
+                if (java.nio.file.Files.exists(snapshotDir)) {
+                    try (var files = java.nio.file.Files.list(snapshotDir)) {
+                        files.forEach(f -> { try { java.nio.file.Files.delete(f); } catch (Exception ignored) {} });
+                    }
+                }
+            }
+        } catch (Exception e) { /* non-critical */ }
+
         System.out.println("Generating world...");
         worldGenerationService.generateWorld();
 
