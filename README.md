@@ -338,19 +338,62 @@ Service categories: financial, logistics, healthcare, education, legal, security
 # Build
 ./gradlew build
 
-# Run with default config (200 agents, 100x100 world, 10 years)
-java -jar build/libs/measim-0.1.0.jar --config config/default.yaml
+# Launch with settings UI (configure agents, world, LLM, then press Start)
+java -jar build/libs/measim-0.1.0-all.jar --visualize
 
-# Run comparison (MEAS vs baseline)
-java -jar build/libs/measim-0.1.0.jar --compare --config config/default.yaml
+# Quick-start with visualizer (skip settings, use config file)
+java -jar build/libs/measim-0.1.0-all.jar --visualize --quick --config config/default.yaml
+
+# Headless (console output + CSV metrics, no UI)
+java -jar build/libs/measim-0.1.0-all.jar --config config/default.yaml
+
+# Comparison mode (MEAS vs baseline capitalism)
+java -jar build/libs/measim-0.1.0-all.jar --compare --config config/default.yaml
+```
+
+On Windows with Java 21 not on PATH:
+```powershell
+& "C:\Program Files\Java\jdk-21\bin\java.exe" -jar build\libs\measim-0.1.0-all.jar --visualize
 ```
 
 ### LLM Configuration
 
-Set your Anthropic API key for LLM-powered Game Master and agent escalation:
+Set your Anthropic API key via environment variable (never put keys in code/config files):
 ```bash
+# Linux/Mac
 export ANTHROPIC_API_KEY=your-key-here
+
+# Windows PowerShell
+$env:ANTHROPIC_API_KEY = "your-key-here"
 ```
+
+Or enter it in the launcher UI's API Key field. Default model: Claude Sonnet 4.6 (`claude-sonnet-4-6`).
+
+### Free-Form Agent Actions
+
+When LLM is enabled, agents aren't limited to hardcoded action types. They can describe creative, novel, or combined strategies in natural language:
+
+```json
+{"action": "FREE_FORM", "description": "Use my aqueduct's excess capacity to sell water transport to neighboring farmers while running my drill at half capacity to reduce wear", "budget": 200}
+```
+
+The Game Master translates this into concrete game mechanics: what resources change, what it costs, what risks and byproducts it creates, what experience domain it exercises. Standard action types (MOVE, BUY, SELL, PRODUCE) remain for routine operations.
+
+### Agent Experience & Specialization
+
+Agents build experience through doing. An agent who has been mining for 50 ticks gets better GM evaluations for mining-related proposals (lower cost, lower risk, higher capacity). Experience is tracked per domain (extraction, production:farming, infrastructure, research:chemistry, service:FINANCIAL, etc.) and passed to the GM in every evaluation.
+
+The GM never tells agents their experience stats — agents know what they remember, not numbers. Specialization advantage emerges from play.
+
+### Multi-Turn GM Conversations
+
+Agent-GM interactions can involve clarification rounds:
+1. Agent proposes → GM evaluates
+2. If GM needs more info → asks clarification question (about plans/materials only, NEVER reveals hidden info)
+3. Agent responds with what they'd naturally know
+4. GM gives final evaluation
+
+The GM has strict information boundaries: it never reveals true risk profiles, hidden byproducts, other agents' information, or its internal reasoning to agents.
 
 Or in `config/default.yaml`:
 ```yaml
