@@ -118,11 +118,8 @@ public class LlmServiceImpl implements LlmService {
             int newInputTokens = totalInputTokens + response.inputTokens();
             double newCost = totalCost + response.costUsd();
 
-            // If no tool use, out of turns, or budget low, return the final response
-            if (!response.hasToolUse() || turnsRemaining <= 0 || llmDao.budgetRemaining() < 0.10) {
-                if (llmDao.budgetRemaining() < 0.10 && response.hasToolUse()) {
-                    System.out.println("        [GM Tool] Budget low, forcing final response");
-                }
+            // If no tool use or out of turns, return the final response
+            if (!response.hasToolUse() || turnsRemaining <= 0) {
                 return CompletableFuture.completedFuture(new LlmResponse(
                         response.content(), newInputTokens, response.outputTokens(),
                         newCost, response.model(), false,

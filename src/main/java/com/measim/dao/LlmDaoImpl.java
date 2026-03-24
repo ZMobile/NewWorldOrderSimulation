@@ -88,18 +88,6 @@ public class LlmDaoImpl implements LlmDao {
             }
         }
 
-        // Check budget — pause simulation if exhausted, let user reload
-        if (!canAfford(request)) {
-            boolean retry = budgetPauseHandler.pauseForBudget(totalSpent.sum(), config.totalBudgetUsd());
-            if (retry && canAfford(request)) {
-                // User added budget — retry the same request
-                return sendRequest(request);
-            }
-            // User cancelled or still can't afford — fall back to deterministic
-            return CompletableFuture.completedFuture(
-                    new LlmResponse("[LLM budget exhausted]", 0, 0, 0, request.model(), false));
-        }
-
         int callNum = totalCalls.get() + 1;
         return callApi(request).thenApply(response -> {
             totalSpent.add(response.costUsd());
@@ -131,12 +119,11 @@ public class LlmDaoImpl implements LlmDao {
 
     @Override
     public boolean canAfford(LlmRequest request) {
-        double estimatedCost = estimateCost(request);
-        return totalSpent.sum() + estimatedCost <= config.totalBudgetUsd();
+        return true; // budget enforcement is via API billing, not internal tracking
     }
 
     @Override public double totalSpent() { return totalSpent.sum(); }
-    @Override public double budgetRemaining() { return config.totalBudgetUsd() - totalSpent.sum(); }
+    @Override public double budgetRemaining() { return Double.MAX_VALUE; } // no internal limit
     @Override public int totalCalls() { return totalCalls.get(); }
 
     private CompletableFuture<LlmResponse> callApi(LlmRequest request) {
@@ -192,6 +179,19 @@ public class LlmDaoImpl implements LlmDao {
                     .thenCompose(httpResponse -> {
                         activeCalls.decrementAndGet();
                         int status = httpResponse.statusCode();
+
+                        // Billing/credit error — pause simulation, let user reload
+                        if (status == 402 || (status == 400 && httpResponse.body().contains("billing"))
+                                || (status == 400 && httpResponse.body().contains("credit"))) {
+                            System.out.printf("      [LLM] API credits exhausted (HTTP %d). Pausing...%n", status);
+                            boolean retry = budgetPauseHandler.pauseForBudget(totalSpent.sum(), 0);
+                            if (retry) {
+                                return callApiWithRetry(request, retriesLeft);
+                            }
+                            return CompletableFuture.completedFuture(
+                                    new LlmResponse("[API credits exhausted]", 0, 0, 0, request.model(), false));
+                        }
+
                         // Retry on rate limit (429) or server error (5xx)
                         if ((status == 429 || status >= 500) && retriesLeft > 0) {
                             int delay = status == 429 ? 5000 : 2000;

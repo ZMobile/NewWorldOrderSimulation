@@ -1,48 +1,37 @@
 package com.measim.service.llm;
 
-import com.measim.model.config.SimulationConfig;
-import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.TextInputDialog;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Pauses the simulation when LLM budget is exhausted and shows a popup
- * asking the user to reload credits. Blocks the calling thread until
- * the user clicks Continue, then the exact same request is retried.
+ * Pauses the simulation when the Anthropic API rejects requests due to
+ * exhausted account credits. Shows a popup asking the user to reload
+ * credits on their Anthropic account. The exact same request is retried
+ * after the user clicks Continue.
  */
 @Singleton
 public class BudgetPauseHandler {
 
-    private final SimulationConfig config;
     private final AtomicBoolean pauseTriggered = new AtomicBoolean(false);
 
-    @Inject
-    public BudgetPauseHandler(SimulationConfig config) {
-        this.config = config;
-    }
-
     /**
-     * Called when budget is exhausted. Blocks the calling thread,
-     * shows a popup on the FX thread, waits for user to continue.
-     * Returns true if the user added budget and wants to retry,
-     * false if they want to skip (continue in deterministic mode).
+     * Called when the API returns a billing/credit error.
+     * Blocks the calling thread, shows a popup on the FX thread.
+     * Returns true if user clicked Continue (retry), false if they clicked Skip (deterministic).
      */
-    public boolean pauseForBudget(double spent, double budget) {
+    public boolean pauseForBudget(double totalSpent, double unused) {
         // Only one thread triggers the popup — others wait
         if (!pauseTriggered.compareAndSet(false, true)) {
-            // Another thread already triggered — wait for it to resolve
             waitForResume();
-            return config.totalBudgetUsd() > spent;
+            return true; // assume user clicked Continue
         }
 
-        System.out.printf("    [BUDGET] Exhausted: $%.2f spent of $%.2f budget. Pausing simulation...%n",
-                spent, budget);
+        System.out.printf("    [API] Credits exhausted after $%.2f spent. Simulation paused.%n", totalSpent);
         System.out.flush();
 
         CountDownLatch latch = new CountDownLatch(1);
@@ -51,29 +40,23 @@ public class BudgetPauseHandler {
         try {
             Platform.runLater(() -> {
                 try {
-                    TextInputDialog dialog = new TextInputDialog(String.valueOf(budget + 50));
-                    dialog.setTitle("LLM Budget Exhausted");
-                    dialog.setHeaderText(String.format(
-                            "Budget exhausted: $%.2f spent of $%.2f\n\n" +
-                            "The simulation is paused. Enter a new total budget\n" +
-                            "to continue with LLM, or Cancel to continue without LLM.",
-                            spent, budget));
-                    dialog.setContentText("New total budget ($):");
+                    Alert alert = new Alert(Alert.AlertType.WARNING);
+                    alert.setTitle("API Credits Exhausted");
+                    alert.setHeaderText("Anthropic API credits have run out");
+                    alert.setContentText(String.format(
+                            "Total spent this session: $%.2f\n\n" +
+                            "To continue with LLM:\n" +
+                            "1. Add credits at console.anthropic.com\n" +
+                            "2. Click 'Continue' to retry\n\n" +
+                            "Or click 'Skip' to continue in deterministic mode.",
+                            totalSpent));
 
-                    var result = dialog.showAndWait();
-                    if (result.isPresent()) {
-                        try {
-                            double newBudget = Double.parseDouble(result.get().trim());
-                            if (newBudget > spent) {
-                                config.setTotalBudgetUsd(newBudget);
-                                System.out.printf("    [BUDGET] New budget: $%.2f (%.2f remaining)%n",
-                                        newBudget, newBudget - spent);
-                                retry.set(true);
-                            }
-                        } catch (NumberFormatException e) {
-                            // Invalid input — treat as cancel
-                        }
-                    }
+                    ButtonType continueBtn = new ButtonType("Continue");
+                    ButtonType skipBtn = new ButtonType("Skip (Deterministic)");
+                    alert.getButtonTypes().setAll(continueBtn, skipBtn);
+
+                    var result = alert.showAndWait();
+                    retry.set(result.isPresent() && result.get() == continueBtn);
                 } finally {
                     latch.countDown();
                 }
@@ -86,11 +69,17 @@ public class BudgetPauseHandler {
             pauseTriggered.set(false);
         }
 
+        if (retry.get()) {
+            System.out.println("    [API] User clicked Continue. Retrying...");
+        } else {
+            System.out.println("    [API] User clicked Skip. Continuing in deterministic mode.");
+        }
+        System.out.flush();
+
         return retry.get();
     }
 
     private void waitForResume() {
-        // Spin-wait for the popup to resolve (other threads hit budget at same time)
         while (pauseTriggered.get()) {
             try { Thread.sleep(100); } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
