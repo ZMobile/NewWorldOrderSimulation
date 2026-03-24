@@ -30,6 +30,7 @@ public class CommunicationPanel extends VBox {
     private List<Message> allMessages = new ArrayList<>();
     private int searchIndex = -1;
     private boolean showFullText = false;
+    private boolean threadedView = false;
 
     public CommunicationPanel() {
         setSpacing(3);
@@ -73,8 +74,13 @@ public class CommunicationPanel extends VBox {
         wrapCheck.setStyle("-fx-font-size: 11;");
         wrapCheck.selectedProperty().addListener((obs, o, n) -> { showFullText = n; refreshView(); });
 
+        CheckBox threadCheck = new CheckBox("Threads");
+        threadCheck.setSelected(false);
+        threadCheck.setStyle("-fx-font-size: 11;");
+        threadCheck.selectedProperty().addListener((obs, o, n) -> { threadedView = n; refreshView(); });
+
         HBox filters = new HBox(3, channelFilter, agentFilter, searchField);
-        HBox buttons = new HBox(3, refreshBtn, copyAllBtn, wrapCheck, autoScrollCheck, statusLabel);
+        HBox buttons = new HBox(3, refreshBtn, copyAllBtn, wrapCheck, threadCheck, autoScrollCheck, statusLabel);
 
         messageList.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 10;");
         messageList.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
@@ -141,41 +147,65 @@ public class CommunicationPanel extends VBox {
     }
 
     private void refreshView() {
-        // Remember selection
         int selectedIdx = messageList.getSelectionModel().getSelectedIndex();
-
         var filtered = getFilteredMessages();
         messageList.getItems().clear();
 
-        for (Message msg : filtered) {
-            String prefix = switch (msg.channel()) {
-                case AGENT_INTERNAL -> "[THOUGHT]";
-                case GM_INTERNAL -> "[GM]";
-                case AGENT_TO_GM -> "[->GM]";
-                case GM_TO_AGENT -> "[GM->]";
-                case AGENT_TO_AGENT -> "[CHAT]";
-                case BROADCAST -> "[ALL]";
-                case GM_WORLD_NARRATION -> "[WORLD]";
-            };
+        String selectedAgent = agentFilter.getValue();
+        boolean isAgentFilter = selectedAgent != null && !selectedAgent.startsWith("All")
+                && !selectedAgent.equals("GAME_MASTER");
 
-            String content;
-            if (showFullText) {
-                content = msg.content().replace("\n", " ");
-            } else {
-                content = msg.content().length() > 80
-                        ? msg.content().substring(0, 80) + "..."
-                        : msg.content();
+        if (threadedView && isAgentFilter) {
+            // Threaded view: group by conversation partner
+            Map<String, List<Message>> threads = new java.util.LinkedHashMap<>();
+            for (Message msg : filtered) {
+                if (msg.channel() != Message.Channel.AGENT_TO_AGENT) {
+                    threads.computeIfAbsent("_other", k -> new ArrayList<>()).add(msg);
+                    continue;
+                }
+                String partner = msg.senderId().equals(selectedAgent) ? msg.receiverId() : msg.senderId();
+                if (partner == null) partner = "_broadcast";
+                threads.computeIfAbsent(partner, k -> new ArrayList<>()).add(msg);
             }
-            // Show direction when filtering to a specific agent
-            String agentFilter2 = agentFilter.getValue();
-            String direction = "";
-            if (agentFilter2 != null && !agentFilter2.startsWith("All") && !agentFilter2.equals("GAME_MASTER")) {
-                if (msg.senderId().equals(agentFilter2)) direction = "OUT> ";
-                else if (msg.receiverId().equals(agentFilter2)) direction = "IN < ";
+            for (var entry : threads.entrySet()) {
+                String partner = entry.getKey();
+                if ("_other".equals(partner)) {
+                    messageList.getItems().add("--- Other messages ---");
+                } else if ("_broadcast".equals(partner)) {
+                    messageList.getItems().add("--- Broadcasts ---");
+                } else {
+                    messageList.getItems().add("--- Chat with " + partner + " ---");
+                }
+                for (Message msg : entry.getValue()) {
+                    String who = msg.senderId().equals(selectedAgent) ? "You" : msg.senderId();
+                    String text = showFullText ? msg.content().replace("\n", " ")
+                            : (msg.content().length() > 100 ? msg.content().substring(0, 100) + "..." : msg.content());
+                    messageList.getItems().add(String.format("  T%d %s: %s", msg.tick(), who, text));
+                }
             }
-            messageList.getItems().add(String.format("T%d %s %s%s->%s: %s",
-                    msg.tick(), prefix, direction, msg.senderId(),
-                    msg.receiverId() != null ? msg.receiverId() : "?", content));
+        } else {
+            // Flat view
+            for (Message msg : filtered) {
+                String prefix = switch (msg.channel()) {
+                    case AGENT_INTERNAL -> "[THOUGHT]";
+                    case GM_INTERNAL -> "[GM]";
+                    case AGENT_TO_GM -> "[->GM]";
+                    case GM_TO_AGENT -> "[GM->]";
+                    case AGENT_TO_AGENT -> "[CHAT]";
+                    case BROADCAST -> "[ALL]";
+                    case GM_WORLD_NARRATION -> "[WORLD]";
+                };
+                String content = showFullText ? msg.content().replace("\n", " ")
+                        : (msg.content().length() > 80 ? msg.content().substring(0, 80) + "..." : msg.content());
+                String direction = "";
+                if (isAgentFilter) {
+                    if (msg.senderId().equals(selectedAgent)) direction = "OUT> ";
+                    else if (msg.receiverId().equals(selectedAgent)) direction = "IN < ";
+                }
+                messageList.getItems().add(String.format("T%d %s %s%s->%s: %s",
+                        msg.tick(), prefix, direction, msg.senderId(),
+                        msg.receiverId() != null ? msg.receiverId() : "?", content));
+            }
         }
 
         statusLabel.setText(filtered.size() + " messages");
