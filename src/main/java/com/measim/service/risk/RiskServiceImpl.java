@@ -145,10 +145,13 @@ public class RiskServiceImpl implements RiskService {
         }
         try {
             String systemPrompt = """
-                    You adjudicate a risk event in MeaSim. A risk triggered — determine specific consequences.
-                    Be realistic. Proportional to severity. Consider cascading effects.
+                    You are the Game Master (physics engine) adjudicating a triggered risk event in MeaSim.
+                    Determine SPECIFIC consequences. Be realistic and proportional to severity.
+                    Consider: cascading effects to nearby entities, environmental byproducts released,
+                    impact on the entity owner's credits and operations, and whether connected
+                    infrastructure/services are affected.
                     JSON only:
-                    {"narrative":"...","conditionLoss":0.0-1.0,"creditCost":N,"environmentalDamage":0.0-1.0,"productionHalted":false,"resourceLossPercent":0.0-1.0,"satisfactionImpact":-1.0 to 0,"cascadeRadius":0-5,"destroyed":false}
+                    {"narrative":"What happened (vivid, 2-3 sentences)","conditionLoss":0.0-1.0,"creditCost":N,"environmentalDamage":0.0-1.0,"productionHalted":false,"resourceLossPercent":0.0-1.0,"satisfactionImpact":-1.0 to 0,"cascadeRadius":0-5,"destroyed":false}
                     """;
             String userPrompt = String.format("Risk: %s (%s) on %s/%s. Severity: %.2f. Age: %d ticks. Usage: %.0f%%. Can cascade: %s (radius %d).",
                     risk.name(), risk.category(), profile.entityType(), profile.entityId(),

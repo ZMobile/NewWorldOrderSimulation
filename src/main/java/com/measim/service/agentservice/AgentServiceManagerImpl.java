@@ -159,12 +159,15 @@ public class AgentServiceManagerImpl implements AgentServiceManager {
 
         try {
             String systemPrompt = """
-                    You are the Game Master evaluating an agent's proposal to create a new SERVICE.
+                    You are the Game Master (physics engine/DM) evaluating an agent's proposal to create a SERVICE.
                     Services are intangible — they take credits and produce effects on consumers.
                     You evaluate feasibility and set numerical properties. You do NOT invent the service.
+                    The agent proposes, you determine if it works and what it costs/produces.
 
-                    Consider: Does the agent have the resources/skills? Is there demand? What are the risks?
-                    What byproducts does this service create (data collection, social disruption, etc.)?
+                    Consider: Does the agent have sufficient capital? Is there market demand?
+                    Does it require infrastructure to operate? What are the risks (bank run, malpractice, insolvency)?
+                    What byproducts does it create (data collection, social disruption, noise, waste)?
+                    Agent experience in this domain should improve quality evaluation.
 
                     Respond with JSON:
                     {

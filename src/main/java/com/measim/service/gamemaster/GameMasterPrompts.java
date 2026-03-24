@@ -56,51 +56,37 @@ public final class GameMasterPrompts {
 
     public static String novelActionSystemPrompt() {
         return """
-                You are the Game Master for MeaSim, an economic society simulator.
+                You are the Game Master (physics engine/DM) for MeaSim, an economic society simulator.
                 An agent is attempting a novel action outside the deterministic rules.
-                You must decide what happens — you are the DM adjudicating creative play.
+                You evaluate feasibility and determine outcomes. You do NOT invent solutions for agents.
+
+                WORLD FEATURES:
+                - Agents own property claims (tile slots), hire via work relations, create services
+                - Infrastructure is GM-evaluated (agents propose, you set properties)
+                - Risk profiles exist on all entities (evolution model: age, usage, maintenance, environment)
+                - Byproducts/externalities can be visible, delayed, hidden, or cumulative
+                - MEAS scoring modifiers (EF, CC, LD, RC) affect credit flow on all transactions
 
                 PRINCIPLES:
                 1. Reward creativity proportional to investment and risk taken.
-                2. Exploitative actions should sometimes succeed short-term but create systemic risk.
-                3. Public goods actions should have delayed but compounding benefits.
-                4. Political actions affect agent relationships and governance dynamics.
-                5. Artisanal actions create unique value that can't be mass-produced.
-                6. Actions must be internally consistent with the world's physics and economics.
-                7. Higher credit stakes increase both potential reward and risk.
-                8. The agent's archetype personality should influence HOW they succeed or fail, not IF.
+                2. Exploitative actions may succeed short-term but create systemic risk and byproducts.
+                3. Public goods actions have delayed but compounding benefits.
+                4. Actions must be physically/economically consistent with the world.
+                5. Higher stakes = higher potential reward AND risk.
+                6. Agent experience in a domain should improve outcomes (specialization advantage).
 
-                ALSO: Set a risk profile for the outcome. What could go wrong going forward?
-                Include evolution parameters (how risk changes over time).
+                Set BOTH a risk profile AND byproduct profile for the outcome.
 
-                Respond with JSON:
+                JSON response:
                 {
-                  "outcome": "SUCCESS" | "PARTIAL_SUCCESS" | "FAILURE" | "BACKFIRE",
+                  "outcome": "SUCCESS|PARTIAL_SUCCESS|FAILURE|BACKFIRE",
                   "narrative": "What happens (2-3 sentences)",
-                  "creditChange": N.N (positive = gain, negative = loss),
+                  "creditChange": N.N,
                   "satisfactionChange": N.N (-1.0 to 1.0),
                   "commonsScoreChange": N.N,
-                  "worldEvent": null or {
-                    "type": "EVENT_TYPE",
-                    "name": "Event Name",
-                    "description": "What changes in the world",
-                    "severity": 0.0-1.0
-                  },
-                  "risks": [
-                    {
-                      "name": "Risk name",
-                      "description": "What could go wrong",
-                      "category": "STRUCTURAL|ENVIRONMENTAL|ECONOMIC|OPERATIONAL|CATASTROPHIC|TECHNOLOGICAL|SOCIAL",
-                      "baseProbability": 0.0-0.1,
-                      "agingRate": 0.0-0.1,
-                      "usageSensitivity": 0.0-1.0,
-                      "maintenanceSensitivity": 0.0-1.0,
-                      "environmentSensitivity": 0.0-1.0,
-                      "minSeverity": 0.0-1.0,
-                      "maxSeverity": 0.0-1.0,
-                      "canCascade": true/false
-                    }
-                  ]
+                  "worldEvent": null or {"type":"...","name":"...","description":"...","severity":0.0-1.0},
+                  "risks": [{"name":"...","category":"STRUCTURAL|ENVIRONMENTAL|ECONOMIC|OPERATIONAL|CATASTROPHIC|TECHNOLOGICAL|SOCIAL","baseProbability":0.01,"agingRate":0.02,"usageSensitivity":0.3,"maintenanceSensitivity":0.5,"environmentSensitivity":0.3,"minSeverity":0.1,"maxSeverity":0.5,"canCascade":false}],
+                  "byproducts": [{"name":"...","type":"AIR_POLLUTION|WATER_CONTAMINATION|SOIL_DEGRADATION|NOISE|WASTE|CHEMICAL|SOCIAL|CUSTOM","visibility":"VISIBLE|DELAYED|HIDDEN|CUMULATIVE","baseAmountPerTick":0.01,"diffusionRadius":2,"accumulationRate":0.5}]
                 }
                 Only output JSON.
                 """;
@@ -212,11 +198,15 @@ public final class GameMasterPrompts {
                 You are the Game Master for MeaSim. Perform a world coherence check.
                 Look for imbalances, unrealistic states, or missed consequences.
 
-                Examples of corrections:
-                - If env health is 0.1 but no crisis events have fired, something is wrong
-                - If Gini is 0.8 and satisfaction is 0.9, welfare should be lower
-                - If there are 500 robots but no increase in LD diversion, scoring may be miscalibrated
-                - If all agents are clustered in one area, resources elsewhere should be regenerating faster
+                CHECK ALL SYSTEMS:
+                - Environment: low health should cause crises, high pollution should degrade tiles
+                - Economy: high Gini + high satisfaction is incoherent — material conditions should reflect inequality
+                - Labor: many robots but no LD diversion increase = scoring miscalibrated
+                - Property: if few agents own most claims, rent-seeking should be depressing welfare for others
+                - Services: if critical services (food, healthcare) have no providers, satisfaction should drop
+                - Infrastructure: aging infrastructure without maintenance should be failing
+                - Risk: accumulated hidden byproducts should eventually surface as environmental/health consequences
+                - Spatial: agents clustered in one area = resources elsewhere regenerating, unclaimed property available
 
                 Respond with JSON:
                 {
