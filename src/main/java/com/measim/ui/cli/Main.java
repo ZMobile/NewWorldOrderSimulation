@@ -125,6 +125,20 @@ public class Main {
         else sim.run();
     }
 
+    private static String resolveApiKey(LauncherWindow.LaunchSettings s) {
+        if (!s.llmEnabled()) return "";
+        // Use the key from the text field if provided
+        if (s.apiKey() != null && !s.apiKey().isEmpty()) return s.apiKey();
+        // Fall back to environment variable
+        String envKey = System.getenv("ANTHROPIC_API_KEY");
+        if (envKey != null && !envKey.isEmpty()) {
+            System.out.println("API key resolved from ANTHROPIC_API_KEY environment variable.");
+            return envKey;
+        }
+        System.out.println("WARNING: LLM enabled but no API key found. Will use deterministic fallback.");
+        return "";
+    }
+
     private static String buildTempConfig(LauncherWindow.LaunchSettings s) {
         return String.format("""
                 world:
@@ -175,7 +189,7 @@ public class Main {
                 s.seed(), s.worldWidth(), s.worldHeight(),
                 s.agentCount(),
                 s.measEnabled(), s.measEnabled(),
-                s.llmEnabled() ? s.apiKey() : "",
+                resolveApiKey(s),
                 s.model(), s.model(), s.model(),
                 s.budgetUsd(),
                 s.totalYears());
