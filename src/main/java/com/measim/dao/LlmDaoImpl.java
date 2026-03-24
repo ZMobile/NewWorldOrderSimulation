@@ -26,10 +26,12 @@ public class LlmDaoImpl implements LlmDao {
 
     private static final String ANTHROPIC_VERSION = "2023-06-01";
     private static final Map<String, Double> COST_PER_INPUT_TOKEN = Map.of(
+            "claude-sonnet-4-6", 3.0 / 1_000_000,
             "claude-sonnet-4-20250514", 3.0 / 1_000_000,
             "claude-opus-4-6", 15.0 / 1_000_000
     );
     private static final Map<String, Double> COST_PER_OUTPUT_TOKEN = Map.of(
+            "claude-sonnet-4-6", 15.0 / 1_000_000,
             "claude-sonnet-4-20250514", 15.0 / 1_000_000,
             "claude-opus-4-6", 75.0 / 1_000_000
     );

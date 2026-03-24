@@ -53,12 +53,12 @@ llm:
   provider: "anthropic"
   apiKey: ""  # Set here or via ANTHROPIC_API_KEY env var
   apiBaseUrl: "https://api.anthropic.com"
-  agentModel: "claude-sonnet-4-20250514"
-  complexModel: "claude-opus-4-6"
-  gameMasterModel: "claude-opus-4-6"
+  agentModel: "claude-sonnet-4-6"
+  complexModel: "claude-sonnet-4-6"
+  gameMasterModel: "claude-sonnet-4-6"
   maxAgentCallsPerTick: 50
   maxGameMasterCallsPerTick: 20
-  totalBudgetUsd: 100.0
+  totalBudgetUsd: 50.0
   cacheEnabled: true
   cacheTtlTicks: 5
 

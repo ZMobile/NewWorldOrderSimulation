@@ -31,9 +31,9 @@ public class SimulationConfig {
     private String llmProvider = "anthropic";
     private String apiKey = "";  // Set via config YAML or ANTHROPIC_API_KEY env var
     private String apiBaseUrl = "https://api.anthropic.com";
-    private String agentModel = "claude-sonnet-4-20250514";
-    private String complexModel = "claude-opus-4-6";
-    private String gameMasterModel = "claude-opus-4-6";
+    private String agentModel = "claude-sonnet-4-6";
+    private String complexModel = "claude-sonnet-4-6";
+    private String gameMasterModel = "claude-sonnet-4-6";
     private int maxAgentCallsPerTick = 50;
     private int maxGameMasterCallsPerTick = 20;
     private double totalBudgetUsd = 100.0;
