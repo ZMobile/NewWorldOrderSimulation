@@ -18,6 +18,9 @@ import java.nio.file.Path;
 
 public class Main {
 
+    // Shared state between launcher callback and visualizer
+    private static Injector sharedInjector;
+
     public static void main(String[] args) {
         String configPath = "config/default.yaml";
         boolean compare = false;
@@ -34,12 +37,15 @@ public class Main {
         }
 
         if (visualize && !quick) {
-            // Show launcher UI — user configures settings and presses Start
             launchWithUI(args);
-        } else {
-            // Headless or quick-start mode — run from config file
+        } else if (visualize) {
+            // Quick-start: initialize, open viewer, run in background
             SimulationConfig config = SimulationConfig.load(Path.of(configPath));
-            runSimulation(config, compare, visualize, args);
+            launchQuickVisualizer(config, compare, args);
+        } else {
+            // Headless
+            SimulationConfig config = SimulationConfig.load(Path.of(configPath));
+            runHeadless(config, compare);
         }
     }
 
@@ -49,53 +55,74 @@ public class Main {
                     settings.agentCount(), settings.worldWidth(), settings.worldHeight(),
                     settings.totalYears(), settings.measEnabled(), settings.llmEnabled());
 
-            new Thread(() -> {
-                try {
-                    String tempYaml = buildTempConfig(settings);
-                    Path tempPath = Path.of("config/session.yaml");
-                    java.nio.file.Files.writeString(tempPath, tempYaml);
-                    SimulationConfig sessionConfig = SimulationConfig.load(tempPath);
-                    runSimulation(sessionConfig, false, true, args);
-                } catch (Exception e) {
-                    System.err.println("Failed to start: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }).start();
+            try {
+                String tempYaml = buildTempConfig(settings);
+                Path tempPath = Path.of("config/session.yaml");
+                java.nio.file.Files.writeString(tempPath, tempYaml);
+                SimulationConfig config = SimulationConfig.load(tempPath);
+
+                // Create injector and initialize world (fast — no LLM calls)
+                sharedInjector = Guice.createInjector(new ConfigModule(config), new ServiceModule());
+                SimulationService sim = sharedInjector.getInstance(SimulationService.class);
+                sim.initialize();
+
+                // Set viewer dependencies
+                SimulationViewer.setDependencies(
+                        sharedInjector.getInstance(WorldDao.class),
+                        sharedInjector.getInstance(AgentDao.class),
+                        sharedInjector.getInstance(MetricsDao.class));
+                SimulationViewer.setCommunicationDao(sharedInjector.getInstance(CommunicationDao.class));
+
+                // Open viewer immediately on FX thread
+                Platform.runLater(() -> {
+                    try {
+                        new SimulationViewer().start(new javafx.stage.Stage());
+                    } catch (Exception e) {
+                        System.err.println("Visualizer failed: " + e.getMessage());
+                    }
+                });
+
+                // Run simulation ticks in background
+                new Thread(() -> {
+                    sim.run(); // This now skips initialize() since it's already done
+                    System.out.println("Simulation complete. Visualizer remains open.");
+                }).start();
+
+            } catch (Exception e) {
+                System.err.println("Failed to start: " + e.getMessage());
+                e.printStackTrace();
+            }
         });
 
         Application.launch(LauncherWindow.class, args);
     }
 
-    private static void runSimulation(SimulationConfig config, boolean compare,
-                                       boolean visualize, String[] args) {
-        Injector injector = Guice.createInjector(
-                new ConfigModule(config),
-                new ServiceModule()
-        );
+    private static void launchQuickVisualizer(SimulationConfig config, boolean compare, String[] args) {
+        Injector injector = Guice.createInjector(new ConfigModule(config), new ServiceModule());
+        SimulationService sim = injector.getInstance(SimulationService.class);
+        sim.initialize();
 
-        SimulationService simulation = injector.getInstance(SimulationService.class);
+        SimulationViewer.setDependencies(
+                injector.getInstance(WorldDao.class),
+                injector.getInstance(AgentDao.class),
+                injector.getInstance(MetricsDao.class));
+        SimulationViewer.setCommunicationDao(injector.getInstance(CommunicationDao.class));
 
-        if (compare) {
-            simulation.runComparison();
-        } else {
-            simulation.run();
-        }
+        // Run sim in background, launch viewer on main thread
+        new Thread(() -> {
+            if (compare) sim.runComparison();
+            else sim.run();
+            System.out.println("Simulation complete.");
+        }).start();
 
-        if (visualize) {
-            SimulationViewer.setDependencies(
-                    injector.getInstance(WorldDao.class),
-                    injector.getInstance(AgentDao.class),
-                    injector.getInstance(MetricsDao.class)
-            );
-            SimulationViewer.setCommunicationDao(injector.getInstance(CommunicationDao.class));
-            Platform.runLater(() -> {
-                try {
-                    new SimulationViewer().start(new javafx.stage.Stage());
-                } catch (Exception e) {
-                    System.err.println("Visualizer failed: " + e.getMessage());
-                }
-            });
-        }
+        Application.launch(SimulationViewer.class, args);
+    }
+
+    private static void runHeadless(SimulationConfig config, boolean compare) {
+        Injector injector = Guice.createInjector(new ConfigModule(config), new ServiceModule());
+        SimulationService sim = injector.getInstance(SimulationService.class);
+        if (compare) sim.runComparison();
+        else sim.run();
     }
 
     private static String buildTempConfig(LauncherWindow.LaunchSettings s) {

@@ -41,6 +41,7 @@ public class SimulationServiceImpl implements SimulationService {
     private final ProductionChainDao chainDao;
     private final Set<TickPhase> phases;
     private int currentTick = 0;
+    private boolean initialized = false;
 
     @Inject
     public SimulationServiceImpl(SimulationConfig config, EventBus eventBus,
@@ -76,6 +77,8 @@ public class SimulationServiceImpl implements SimulationService {
 
     @Override
     public void initialize() {
+        if (initialized) return;
+        initialized = true;
         System.out.println("Generating world...");
         worldGenerationService.generateWorld();
 

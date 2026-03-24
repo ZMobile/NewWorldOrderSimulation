@@ -1,0 +1,44 @@
+world:
+  seed: 42
+  width: 50
+  height: 50
+  resourceDensity: 0.3
+  terrainNoise:
+    octaves: 6
+    persistence: 0.5
+
+agents:
+  count: 200
+  perceptionRadius: 7
+
+robots:
+  initialCost: 10000
+  costDecayRate: 0.05
+  initialEfficiency: 1.2
+  efficiencyGrowthRate: 0.03
+
+meas:
+  enabled: true
+  formulaVersion: "v0.1.0"
+  ubiEnabled: true
+  ubiAdequacyTarget: 0.85
+  baseTransactionTax: 0.005
+
+llm:
+  provider: "anthropic"
+  apiKey: "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"
+  apiBaseUrl: "https://api.anthropic.com"
+  agentModel: "claude-sonnet-4-6"
+  complexModel: "claude-sonnet-4-6"
+  gameMasterModel: "claude-sonnet-4-6"
+  maxAgentCallsPerTick: 50
+  maxGameMasterCallsPerTick: 20
+  totalBudgetUsd: 50.0
+  cacheEnabled: true
+  cacheTtlTicks: 5
+
+simulation:
+  ticksPerYear: 12
+  totalYears: 10
+  snapshotInterval: 12
+  metricsInterval: 1
