@@ -127,20 +127,36 @@ public class SimulationServiceImpl implements SimulationService {
                 agentDao.getAgentCount(), config.worldWidth(), config.worldHeight(),
                 totalTicks, config.totalYears(), config.measEnabled() ? "ON" : "OFF");
 
+        System.out.printf("LLM available: %s%n", config.hasApiKey() ? "YES" : "NO (deterministic mode)");
+        System.out.flush();
+
         for (int tick = 0; tick < totalTicks; tick++) {
             currentTick = tick + 1;
+            int month = ((currentTick - 1) % config.ticksPerYear()) + 1;
+            int year = ((currentTick - 1) / config.ticksPerYear()) + 1;
+            System.out.printf("--- Tick %d (Year %d, Month %d) ---%n", currentTick, year, month);
+            System.out.flush();
+
             eventBus.publish(new EventBus.TickStarted(currentTick));
 
-            for (TickPhase phase : orderedPhases) phase.execute(currentTick);
+            for (TickPhase phase : orderedPhases) {
+                long phaseStart = System.currentTimeMillis();
+                phase.execute(currentTick);
+                long elapsed = System.currentTimeMillis() - phaseStart;
+                if (elapsed > 1000) {
+                    System.out.printf("  [%s] took %.1fs%n", phase.name(), elapsed / 1000.0);
+                    System.out.flush();
+                }
+            }
 
             eventBus.publish(new EventBus.TickCompleted(currentTick));
 
             if (currentTick % config.ticksPerYear() == 0) {
-                int year = currentTick / config.ticksPerYear();
+                int yr = currentTick / config.ticksPerYear();
                 var m = metricsService.getLatest();
                 if (m != null)
                     System.out.printf("  Year %d/%d | Gini: %.3f | Env: %.3f | Avg Credits: %.0f | Robots: %d%n",
-                            year, config.totalYears(), m.giniCoefficient(),
+                            yr, config.totalYears(), m.giniCoefficient(),
                             m.environmentalHealth(), m.averageCredits(), m.totalRobots());
             }
 

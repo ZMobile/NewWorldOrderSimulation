@@ -80,9 +80,14 @@ public class LlmDaoImpl implements LlmDao {
                     new LlmResponse("[LLM budget exhausted]", 0, 0, 0, request.model(), false));
         }
 
+        int callNum = totalCalls.get() + 1;
         return callApi(request).thenApply(response -> {
             totalSpent.add(response.costUsd());
-            totalCalls.incrementAndGet();
+            int n = totalCalls.incrementAndGet();
+            if (n % 10 == 0 || n <= 3) {
+                System.out.printf("      [LLM] Call #%d (%s) — $%.4f this call, $%.2f total%n",
+                        n, request.model(), response.costUsd(), totalSpent.sum());
+            }
 
             if (config.cacheEnabled()) {
                 cache.put(cacheKey, new CachedResponse(response.content(), System.currentTimeMillis()));
@@ -114,6 +119,10 @@ public class LlmDaoImpl implements LlmDao {
     @Override public int totalCalls() { return totalCalls.get(); }
 
     private CompletableFuture<LlmResponse> callApi(LlmRequest request) {
+        return callApiWithRetry(request, 3);
+    }
+
+    private CompletableFuture<LlmResponse> callApiWithRetry(LlmRequest request, int retriesLeft) {
         try {
             ObjectNode body = mapper.createObjectNode();
             body.put("model", request.model());
@@ -143,7 +152,28 @@ public class LlmDaoImpl implements LlmDao {
                     .build();
 
             return httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
-                    .thenApply(httpResponse -> parseResponse(httpResponse, request.model()));
+                    .thenCompose(httpResponse -> {
+                        int status = httpResponse.statusCode();
+                        // Retry on rate limit (429) or server error (5xx)
+                        if ((status == 429 || status >= 500) && retriesLeft > 0) {
+                            int delay = status == 429 ? 5000 : 2000;
+                            System.out.printf("      [LLM] %d error, retrying in %ds (%d retries left)%n",
+                                    status, delay / 1000, retriesLeft);
+                            try { Thread.sleep(delay); } catch (InterruptedException ignored) {}
+                            return callApiWithRetry(request, retriesLeft - 1);
+                        }
+                        return CompletableFuture.completedFuture(parseResponse(httpResponse, request.model()));
+                    })
+                    .exceptionally(ex -> {
+                        if (retriesLeft > 0) {
+                            System.out.printf("      [LLM] Network error, retrying (%d left): %s%n",
+                                    retriesLeft, ex.getMessage());
+                            try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+                            return callApiWithRetry(request, retriesLeft - 1).join();
+                        }
+                        return new LlmResponse("[LLM error after retries: " + ex.getMessage() + "]",
+                                0, 0, 0, request.model(), false);
+                    });
 
         } catch (Exception e) {
             return CompletableFuture.completedFuture(

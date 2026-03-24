@@ -222,15 +222,44 @@ public class GameMasterServiceImpl implements GameMasterService {
 
     @Override
     public List<WorldEvent> adjudicateNovelActions(int currentTick, WorldState worldState) {
-        List<WorldEvent> events = new ArrayList<>();
         List<NovelAction> toProcess = new ArrayList<>(pendingNovelActions);
         pendingNovelActions.clear();
 
-        for (NovelAction action : toProcess) {
-            WorldEvent event = adjudicateOneNovelAction(action, currentTick, worldState);
-            if (event != null) {
-                events.add(event);
-                logEvent(event);
+        if (toProcess.isEmpty()) return List.of();
+
+        System.out.printf("    [GM] Adjudicating %d novel actions...%n", toProcess.size());
+
+        if (!llmService.isAvailable()) {
+            // Deterministic: fast, no batching needed
+            List<WorldEvent> events = new ArrayList<>();
+            for (NovelAction action : toProcess) {
+                WorldEvent event = adjudicateNovelActionDeterministic(action, currentTick);
+                if (event != null) { events.add(event); logEvent(event); }
+            }
+            return events;
+        }
+
+        // LLM: batch calls concurrently (max 10 concurrent to avoid rate limits)
+        List<WorldEvent> events = java.util.Collections.synchronizedList(new ArrayList<>());
+        int batchSize = 10;
+        for (int i = 0; i < toProcess.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, toProcess.size());
+            List<NovelAction> batch = toProcess.subList(i, end);
+
+            System.out.printf("    [GM] Processing batch %d-%d of %d...%n", i + 1, end, toProcess.size());
+
+            // Fire all calls in batch concurrently
+            var futures = batch.stream()
+                    .map(action -> java.util.concurrent.CompletableFuture.supplyAsync(() ->
+                            adjudicateOneNovelAction(action, currentTick, worldState)))
+                    .toList();
+
+            // Wait for batch to complete
+            java.util.concurrent.CompletableFuture.allOf(futures.toArray(java.util.concurrent.CompletableFuture[]::new)).join();
+
+            for (var future : futures) {
+                WorldEvent event = future.join();
+                if (event != null) { events.add(event); logEvent(event); }
             }
         }
         return events;
