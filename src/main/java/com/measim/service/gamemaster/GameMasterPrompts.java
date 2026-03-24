@@ -340,15 +340,26 @@ public final class GameMasterPrompts {
                 - Effect magnitudes bounded: trade_cost_reduction max 0.8, extraction_boost max 3.0,
                   production_boost max 2.0, pollution_reduction max 0.5, remediation max 0.1/tick
 
+                CONSTRUCTION RESOURCES:
+                You must specify what resources are needed to build this.
+                Resources come from: agent inventory, market, or reserve (at premium).
+                The reserve has finite resources and charges a premium (1.5-3x market).
+                Reserve should NOT cover 100%% of any resource — force economic participation.
+                Reserve robots provide construction labor at a premium cost.
+                As the economy matures, agents should build private construction services (cheaper).
+
                 Respond with JSON:
                 If feasible:
                 {
                   "feasible": true,
-                  "reasoning": "Your observable thought process on why this works/costs what it does",
+                  "reasoning": "Your observable thought process",
                   "name": "The name for this infrastructure",
                   "description": "What it does",
                   "connectionMode": "POINT_TO_POINT|AREA_OF_EFFECT|TILE_LOCAL",
-                  "constructionCost": N.N,
+                  "resourcesRequired": {"MINERAL": N, "TIMBER": N, "ENERGY": N},
+                  "constructionTimeTicks": N (simple=0, moderate=1-3, complex=6+),
+                  "robotLaborCost": N.N (credits for reserve robot construction labor),
+                  "constructionCost": N.N (total credits including labor),
                   "maintenanceCostPerTick": N.N,
                   "maxRange": N,
                   "capacity": N.N,
@@ -378,7 +389,9 @@ public final class GameMasterPrompts {
                                                        List<InfrastructureType> existingInfra,
                                                        String terrainAtLocation,
                                                        String terrainAtConnection,
-                                                       String agentExperience) {
+                                                       String agentExperience,
+                                                       String agentInventory,
+                                                       String reserveHoldings) {
         StringBuilder sb = new StringBuilder();
         sb.append("Agent's infrastructure proposal:\n");
         sb.append("  Name: ").append(proposal.proposedName()).append("\n");
@@ -392,7 +405,9 @@ public final class GameMasterPrompts {
             sb.append("  Distance: ").append(proposal.location().distanceTo(proposal.connectTo())).append(" hexes\n");
         }
         sb.append("\nAgent experience: ").append(agentExperience).append("\n");
-        sb.append("(More experience in infrastructure = better quality, lower risk, lower cost)\n");
+        sb.append("Agent inventory: ").append(agentInventory).append("\n");
+        sb.append("\nReserve holdings (available at premium): ").append(reserveHoldings).append("\n");
+        sb.append("(Reserve charges 1.5-3x market rate. Reserve should NOT cover 100% of any resource.)\n");
         sb.append("\nAvailable technology: ");
         for (TechNode node : techTree) sb.append(node.name()).append(", ");
         sb.append("\n\nExisting infrastructure in world: ");

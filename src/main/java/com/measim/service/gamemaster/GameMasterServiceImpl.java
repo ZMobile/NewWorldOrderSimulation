@@ -38,6 +38,7 @@ public class GameMasterServiceImpl implements GameMasterService {
     private final LlmService llmService;
     private final CommunicationService commService;
     private final SimulationConfig config;
+    private final com.measim.service.reserve.ReserveService reserveService;
     private final List<NovelAction> pendingNovelActions = new ArrayList<>();
     private final List<String> recentEventLog = new ArrayList<>();
     private final Random fallbackRandom;
@@ -47,7 +48,8 @@ public class GameMasterServiceImpl implements GameMasterService {
                                   ProductionChainDao chainDao, InfrastructureDao infraDao,
                                   WorldDao worldDao, AgentDao agentDao,
                                   LlmService llmService, CommunicationService commService,
-                                  SimulationConfig config) {
+                                  SimulationConfig config,
+                                  com.measim.service.reserve.ReserveService reserveService) {
         this.techRegistry = techRegistry;
         this.chainDao = chainDao;
         this.infraDao = infraDao;
@@ -56,6 +58,7 @@ public class GameMasterServiceImpl implements GameMasterService {
         this.llmService = llmService;
         this.commService = commService;
         this.config = config;
+        this.reserveService = reserveService;
         this.fallbackRandom = new Random(42);
     }
 
@@ -338,11 +341,15 @@ public class GameMasterServiceImpl implements GameMasterService {
 
             String systemPrompt = GameMasterPrompts.infrastructureEvalSystemPrompt();
             String experience = getAgentExperience(proposal.agentId());
+            var agent = agentDao.getAgent(proposal.agentId());
+            String agentInventory = agent != null ? agent.state().inventory().toString() : "{}";
+            String reserveHoldings = reserveService.getReserve().holdings().toString();
+
             String userPrompt = GameMasterPrompts.infrastructureEvalUserPrompt(
                     proposal, techRegistry.getAllTechNodes(), infraDao.getAllTypes(),
                     locationTile != null ? locationTile.terrain().name() : "UNKNOWN",
                     connectionTile != null ? connectionTile.terrain().name() : "N/A",
-                    experience);
+                    experience, agentInventory, reserveHoldings);
 
             // Log GM's thinking
             commService.logThought(GM_ID,

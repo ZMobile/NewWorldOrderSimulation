@@ -424,16 +424,23 @@ Agents have real survival needs with graduated consequences:
 - **Grace period**: first 6 ticks have no penalties while the economy bootstraps
 - **Safety valves**: starting credits buy ~300 ticks of food, foraging needs only 1 resource input, settlement zones = shelter
 
-### Commodity Reserve
+### Commodity Reserve & Construction
 
 Credits are backed by a physical commodity reserve (not pure fiat):
 
 - Reserve holds MINERAL, ENERGY, TIMBER, FOOD_LAND, WATER_RESOURCE
 - **Minimum ratio**: 20% (reserve value / credits in circulation). Governance parameter.
 - **GM manages yearly** (Opus call): buys/sells commodities, adjusts valuations based on scarcity
-- **Agents cannot access the reserve** — it's institutional backing (Fort Knox, not a bank)
+- **Agents cannot access the reserve directly** — it's institutional backing (Fort Knox, not a bank)
 - Prevents infinite money printing: can't create credits beyond reserve backing
 - All reserve transactions numerically logged and auditable
+
+**Reserve Construction Service**: The reserve maintains construction robots that agents can hire at a premium (1.5-3x market rate) to build infrastructure. The GM (Sonnet) decides per-proposal what portion of resources comes from:
+1. **Agent's own inventory** (free)
+2. **Market purchase** (agent must buy from other agents)
+3. **Reserve supply** (premium rate, depletes reserve stock)
+
+The reserve will NOT cover 100% of any resource — agents must participate in the economy. As private "Construction Services" emerge (agents hiring workers to build), reserve robots become the expensive fallback, naturally phasing out. Infrastructure has construction time proportional to complexity (simple = instant, complex = 6+ ticks).
 
 ---
 
