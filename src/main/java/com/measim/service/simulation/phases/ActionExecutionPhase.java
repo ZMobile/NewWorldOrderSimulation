@@ -18,8 +18,7 @@ import com.measim.service.world.EnvironmentService;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Phase 3: Realistic economic pipeline.
@@ -82,35 +81,57 @@ public class ActionExecutionPhase implements TickPhase {
     public void execute(int currentTick) {
         MarketDao.MarketData market = marketDao.getAllMarkets().iterator().next();
 
+        // Phase A: Deterministic economic pipeline (fast, no LLM)
         for (Agent agent : agentDao.getAllAgents()) {
-
-            // Step 1: CONSUME — agents need goods to survive and be satisfied.
-            // This is what creates demand and makes the economy circulate.
             consume(agent);
-
-            // Step 2: EXTRACT — gather raw resources from the tile you're on.
-            // You get inventory, NOT credits. Resources have no value until sold.
             autoExtract(agent);
-
-            // Step 3: PRODUCE — transform resources into products if you can.
-            // Products are more valuable than inputs, but only when sold.
             autoProduce(agent, currentTick);
-
-            // Step 4: SELL — offer products and excess resources to the market.
             autoSell(agent, market, currentTick);
-
-            // Step 5: BUY — place buy orders for food and production inputs.
             autoBuy(agent, market, currentTick);
-
-            // Step 6: LABOR MARKET — business owners hire, workers seek work
             autoLaborMarket(agent, currentTick);
+        }
 
-            // Step 7: STRATEGIC ACTION — the one deliberate choice per tick.
+        // Phase B: Collect all strategic actions that need GM evaluation
+        List<java.util.Map.Entry<Agent, AgentAction>> gmActions = new java.util.ArrayList<>();
+        List<java.util.Map.Entry<Agent, AgentAction>> localActions = new java.util.ArrayList<>();
+
+        for (Agent agent : agentDao.getAllAgents()) {
             AgentAction action = decisionPhase.pendingActions().get(agent.id());
-            if (action != null) {
-                executeStrategicAction(agent, action, market, currentTick);
-            }
+            if (action == null || action instanceof AgentAction.Idle) continue;
 
+            if (action instanceof AgentAction.BuildInfrastructure
+                    || action instanceof AgentAction.CreateService
+                    || action instanceof AgentAction.FreeFormAction) {
+                gmActions.add(java.util.Map.entry(agent, action));
+            } else {
+                localActions.add(java.util.Map.entry(agent, action));
+            }
+        }
+
+        // Execute local actions immediately (no LLM)
+        for (var entry : localActions) {
+            executeStrategicAction(entry.getKey(), entry.getValue(), market, currentTick);
+        }
+
+        // Execute GM actions concurrently in batches
+        if (!gmActions.isEmpty()) {
+            System.out.printf("    [Action] %d GM evaluations needed, processing concurrently...%n", gmActions.size());
+            int batchSize = 5;
+            for (int i = 0; i < gmActions.size(); i += batchSize) {
+                int end = Math.min(i + batchSize, gmActions.size());
+                var batch = gmActions.subList(i, end);
+
+                var futures = batch.stream()
+                        .map(entry -> java.util.concurrent.CompletableFuture.runAsync(() ->
+                                executeStrategicAction(entry.getKey(), entry.getValue(), market, currentTick)))
+                        .toArray(java.util.concurrent.CompletableFuture[]::new);
+
+                java.util.concurrent.CompletableFuture.allOf(futures).join();
+            }
+        }
+
+        // Phase C: Novel actions — periodic GM interaction for all archetypes.
+        for (Agent agent : agentDao.getAllAgents()) {
             // Step 8: NOVEL ACTIONS — periodic GM interaction for all archetypes.
             if (currentTick % 6 == 0 && shouldTriggerNovelAction(agent, currentTick)) {
                 double stake = Math.min(agent.state().credits() * 0.03, 200);
