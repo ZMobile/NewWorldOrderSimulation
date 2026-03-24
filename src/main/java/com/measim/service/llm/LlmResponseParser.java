@@ -6,7 +6,6 @@ import com.measim.model.agent.AgentAction;
 import com.measim.model.economy.ItemType;
 import com.measim.model.world.HexCoord;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -30,15 +29,6 @@ public final class LlmResponseParser {
             String action = root.path("action").asText("IDLE");
 
             return switch (action.toUpperCase()) {
-                case "PRODUCE" -> new AgentAction.Produce(root.path("chainId").asText());
-                case "BUY" -> new AgentAction.PlaceBuyOrder(
-                        ItemType.custom(root.path("item").asText()),
-                        root.path("quantity").asInt(1),
-                        root.path("maxPrice").asDouble(10.0));
-                case "SELL" -> new AgentAction.PlaceSellOrder(
-                        ItemType.custom(root.path("item").asText()),
-                        root.path("quantity").asInt(1),
-                        root.path("minPrice").asDouble(1.0));
                 case "MOVE" -> new AgentAction.Move(
                         new HexCoord(root.path("q").asInt(), root.path("r").asInt()));
                 case "INVEST_RESEARCH" -> new AgentAction.InvestResearch(
@@ -61,8 +51,6 @@ public final class LlmResponseParser {
                         null, root.path("budget").asDouble(100));
                 case "CONSUME_SERVICE" -> new AgentAction.ConsumeService(
                         root.path("serviceId").asText());
-                case "PROPOSE_GOVERNANCE" -> new AgentAction.ProposeGovernance(
-                        root.path("proposal").asText());
                 case "FREE_FORM" -> new AgentAction.FreeFormAction(
                         root.path("description").asText(""),
                         root.path("budget").asDouble(100));

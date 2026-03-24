@@ -118,7 +118,7 @@ You don't deploy a new operating system to production without testing it. MeaSim
 ### What It Simulates
 
 - **Hexagonal tile world** with terrain, resources, environmental health, and pollution diffusion
-- **200-500 autonomous agents** across 12 personality archetypes (Optimizer, Entrepreneur, Exploiter, Free Rider, Philanthropist, etc.)
+- **200-500 autonomous agents** across 18 personality archetypes (Optimizer, Entrepreneur, Exploiter, Free Rider, Philanthropist, etc.)
 - **Complete MEAS scoring engine** with all five axes and exact spec formulas
 - **Proximity-based trade** — no built-in exchange; trade is agent-to-agent or through agent-created marketplace services
 - **Robot labor** with configurable automation curves
@@ -336,7 +336,7 @@ Service categories: financial, logistics, healthcare, education, legal, security
 | 4 | Market | No | Proximity-based trades resolve, MEAS modifiers applied, credits flow |
 | 5 | Contracts | No | Wages paid, rent collected, service subscriptions, breach detection |
 | 6 | Scoring | No | Score vectors recomputed, modifiers updated, audit trail |
-| 7 | UBI | No | Credits distributed from pool to all agents |
+| 7 | UBI | No | Credits distributed yearly from UBI pool to all agents |
 | 8 | Governance | Partial | Property registration, public infrastructure approval, yearly MEAS audit |
 | 9 | Environment | No | Pollution diffusion, recovery, infrastructure maintenance, externality processing |
 | 10 | Risk | Partial | Deterministic probability check → GM adjudicates triggered risks → cascades |
@@ -351,7 +351,7 @@ Service categories: financial, logistics, healthcare, education, legal, security
 
 **Contracts**: General-purpose binding agreements between agents. Employment, rental, trade agreements, service subscriptions, partnerships. Standard contracts are between agents (no GM needed). GM involved only for disputes and novel terms. Contracts process each tick: wages paid, rent collected, breaches detected.
 
-**Labor market**: Agents hire other agents via employment contracts. Employer pays wages, employee works. When employer buys robots and fires workers, the LD axis generates UBI diversion. Unemployed agents fall back to UBI. This is how the Labor Displacement axis actually gets tested.
+**Labor market**: Hiring is agent-negotiated via OFFER_JOB/ACCEPT_JOB. Employer pays wages, employee works. When employer buys robots and fires workers, the LD axis generates UBI diversion. Unemployed agents fall back to UBI. This is how the Labor Displacement axis actually gets tested.
 
 ### Running It
 
@@ -360,6 +360,7 @@ Service categories: financial, logistics, healthcare, education, legal, security
 ./gradlew build
 
 # Launch with settings UI (configure agents, world, LLM, then press Start)
+# The launcher includes a map preview — generate and inspect the world before starting.
 java -jar build/libs/measim-0.1.0-all.jar --visualize
 
 # Quick-start with visualizer (skip settings, use config file)
@@ -398,7 +399,7 @@ Agents route survival operations (extract, produce, move) through the determinis
 {"action": "FREE_FORM", "description": "Use my aqueduct's excess capacity to sell water transport to neighboring farmers while running my drill at half capacity to reduce wear", "budget": 200}
 ```
 
-The Game Master translates this into concrete game mechanics: what resources change, what it costs, what risks and byproducts it creates, what experience domain it exercises. Standard action types (MOVE, EXTRACT, PRODUCE, CLAIM_PROPERTY) handle physics deterministically. Contract negotiation (OFFER_JOB, ACCEPT_JOB, PROPOSE_CONTRACT, ACCEPT_CONTRACT, TERMINATE_CONTRACT) lets agents negotiate work agreements, rentals, and partnerships directly.
+The Game Master translates this into concrete game mechanics: what resources change, what it costs, what risks and byproducts it creates, what experience domain it exercises. Standard action types (MOVE, EXTRACT, PRODUCE, CLAIM_PROPERTY) handle physics deterministically. Claims require physical proximity (within 2 tiles). Contract negotiation (OFFER_JOB, ACCEPT_JOB, PROPOSE_CONTRACT, ACCEPT_CONTRACT, TERMINATE_CONTRACT) lets agents negotiate work agreements, rentals, and partnerships directly.
 
 ### Agent Experience & Specialization
 
@@ -433,7 +434,7 @@ None of these are guaranteed. They're possibilities that emerge (or don't) from 
 
 ### Communication Range
 
-Communication range is dynamic and technology-dependent. Without infrastructure, agents can only communicate with those on adjacent tiles (shouting distance). Infrastructure extends range — a message board covers a settlement, a postal service reaches further, telecommunications go wider. The GM enforces tech consistency: an agent cannot broadcast across the map without the infrastructure to support it.
+Communication range is dynamic and technology-dependent. Settlement clusters have communal gathering points with +5 communication range, serving as natural meeting spots for trade and coordination. Without infrastructure, agents can only communicate with those on adjacent tiles (shouting distance). Infrastructure extends range — a message board covers a settlement, a postal service reaches further, telecommunications go wider. The GM enforces tech consistency: an agent cannot broadcast across the map without the infrastructure to support it.
 
 Without an API key, all LLM features fall back to deterministic systems. The simulation runs fully either way.
 
@@ -502,7 +503,7 @@ All core systems built, wired, and compiling:
 - **Communication**: Observable message log — agent-to-agent, agent-to-GM, GM internal reasoning, multi-turn conversations with information boundaries. Auto-refreshing panel with filter options (All, All Agents, GAME_MASTER, individual agents), Ctrl+F search, auto-scroll toggle, full message detail view. Dynamic communication range (adjacent tiles without phones; infrastructure extends range; GM enforces tech consistency).
 - **Governance**: Minimal protocol layer (Governance GM for reserve/audit/infrastructure), emergent services for courts/police/regulation. Single zone, no jurisdictions. Contracts are binding, property is registered.
 - **Metrics/Output**: CSV metrics, comprehensive JSON snapshots (agents + infrastructure + services + contracts + property + reserve state + LLM costs + risk events + communication), full communication transcript. Output files (metrics, snapshots, communication log) are cleared on each run.
-- **Visualization**: JavaFX hex renderer with agent dots, auto-refreshing dashboard charts, inspector panel, threaded communication log with filter options (All, All Agents, GAME_MASTER, individual agents), Ctrl+F search, auto-scroll toggle, live console with pause/clear/copy
+- **Visualization**: JavaFX hex renderer with agent dots, auto-refreshing dashboard charts, inspector panel, threaded conversation view grouped by chat partner with filter options (All, All Agents, GAME_MASTER, individual agents), Ctrl+F search, auto-scroll toggle, live console with pause/clear/copy
 
 ### Documentation
 

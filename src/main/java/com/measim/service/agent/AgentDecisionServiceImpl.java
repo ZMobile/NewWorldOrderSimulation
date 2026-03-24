@@ -85,35 +85,7 @@ public class AgentDecisionServiceImpl implements AgentDecisionService {
             }
         }
 
-        // Buy resources needed for production chains we can almost complete
-        for (ProductionChain chain : chainDao.getAllDiscovered()) {
-            int missingTypes = 0;
-            int totalMissing = 0;
-            for (var input : chain.inputs().entrySet()) {
-                int have = state.getInventoryCount(input.getKey());
-                if (have < input.getValue()) {
-                    missingTypes++;
-                    totalMissing += input.getValue() - have;
-                }
-            }
-            // Only buy if we're close to having enough (missing 1-2 types)
-            if (missingTypes > 0 && missingTypes <= 2 && totalMissing <= 10) {
-                for (var input : chain.inputs().entrySet()) {
-                    int need = input.getValue() - state.getInventoryCount(input.getKey());
-                    if (need > 0) {
-                        double price = marketPrices.getOrDefault(input.getKey(), 1.0);
-                        if (state.credits() > price * need * 1.5) {
-                            double outputValue = chain.outputs().entrySet().stream()
-                                    .mapToDouble(e -> marketPrices.getOrDefault(e.getKey(), 5.0) * e.getValue())
-                                    .sum();
-                            candidates.add(new ScoredAction(
-                                    new AgentAction.PlaceBuyOrder(input.getKey(), need, price * 1.2),
-                                    outputValue * 0.8));
-                        }
-                    }
-                }
-            }
-        }
+        // No autoBuy — all commerce is agent-to-agent via LLM negotiation.
 
         // Infrastructure proposals:
         // PUBLIC (roads, trails, bridges between tiles): no property needed, GM approves as public works

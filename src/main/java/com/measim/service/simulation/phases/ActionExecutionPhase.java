@@ -29,12 +29,11 @@ import java.util.*;
  *   - Starting capital
  *
  * Each tick per agent:
- *   1. Consume goods (creates demand — FOOD required, others boost satisfaction)
- *   2. Extract resources from current tile (gain inventory, not credits)
- *   3. Produce goods if inputs available (transform inventory, not credits)
- *   4. Sell excess to market (offer to other agents)
- *   5. Buy what you need from market (food, production inputs)
- *   6. Execute strategic action (move, research, robot purchase, etc.)
+ *   1. Consume goods (subsistence — FOOD required, others boost satisfaction)
+ *   2. Extract resources from tile (physics)
+ *   3. Produce goods from inputs (mechanics)
+ *   4. Execute strategic action (move, research, robot purchase, trade, etc.)
+ *   5. Interaction rounds (agent conversations, negotiations, deal closure)
  */
 @Singleton
 public class ActionExecutionPhase implements TickPhase {
@@ -289,12 +288,6 @@ public class ActionExecutionPhase implements TickPhase {
                         agent.state().setLocation(move.destination());
                 }
             }
-            case AgentAction.PlaceBuyOrder buy -> {
-                if (agent.state().credits() > buy.maxPrice() * buy.quantity()) {
-                    market.submitOrder(new Order(agent.id(), buy.itemType(), buy.quantity(),
-                            buy.maxPrice(), Order.OrderSide.BUY, currentTick));
-                }
-            }
             case AgentAction.PurchaseRobot ignored -> {
                 if (agent.state().spendCredits(config.robotInitialCost())) {
                     agent.state().setOwnedRobots(agent.state().ownedRobots() + 1);
@@ -536,13 +529,6 @@ public class ActionExecutionPhase implements TickPhase {
                             com.measim.model.communication.Message.MessageType.INFORMATION_SHARE, currentTick);
                 }
             }
-            case AgentAction.ExtractResource ignored -> {}
-            case AgentAction.Produce ignored -> {}
-            case AgentAction.PlaceSellOrder ignored -> {}
-            case AgentAction.ProposeGovernance ignored -> {}
-            case AgentAction.Vote ignored -> {}
-            case AgentAction.Migrate ignored -> {}
-            case AgentAction.CreateBusiness ignored -> {}
         }
     }
 

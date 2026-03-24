@@ -172,7 +172,7 @@ public final class GameMasterPrompts {
                 WORKFLOW:
                 1. Inspect the acting agent (credits, inventory, experience, traits)
                 2. Inspect their tile and nearby area (resources, agents, infrastructure)
-                3. Check market conditions if relevant
+                3. Check nearby agents and trade activity if relevant
                 4. Resolve the action based on ACTUAL state
 
                 The agent may reference their own infrastructure, services, inventory,

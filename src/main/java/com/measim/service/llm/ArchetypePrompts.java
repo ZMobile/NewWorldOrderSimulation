@@ -59,7 +59,6 @@ public final class ArchetypePrompts {
                 {"action": "BUILD_INFRASTRUCTURE", "name": "...", "description": "...", "connectTo": {"q": N, "r": N} or null}
                 {"action": "CREATE_SERVICE", "name": "...", "description": "...", "category": "...", "budget": N.N}
                 {"action": "CONSUME_SERVICE", "serviceId": "..."}
-                {"action": "PROPOSE_GOVERNANCE", "proposal": "..."}
                 {"action": "OFFER_TRADE", "targetAgent": "agent_id" or null (open offer), "itemsOffered": {"TIMBER": 3}, "itemsRequested": {"FOOD": 2}, "creditsOffered": 0, "creditsRequested": 0, "message": "I'll trade timber for food"}
                 {"action": "ACCEPT_TRADE", "offerId": "trade_123"}
                 {"action": "REJECT_TRADE", "offerId": "trade_123"}
@@ -70,7 +69,7 @@ public final class ArchetypePrompts {
                 {"action": "PROPOSE_CONTRACT", "targetAgent": "agent_42", "contractType": "RENTAL|WORK_RELATION|SERVICE|PARTNERSHIP", "valuePerTick": 5.0, "durationTicks": 12, "terms": "description"}
                 {"action": "ACCEPT_CONTRACT", "proposerAgent": "agent_42", "contractType": "RENTAL"}
                 {"action": "TERMINATE_CONTRACT", "contractId": "contract_123", "reason": "Better opportunity elsewhere"}
-                {"action": "CLAIM_PROPERTY", "q": N, "r": N}
+                {"action": "CLAIM_PROPERTY", "q": N, "r": N}  (Must be within 2 tiles of your location)
                 {"action": "IDLE"}
 
                 CONTRACTS: All contracts are BINDING. Wages auto-garnish each tick. Trades swap atomically.
