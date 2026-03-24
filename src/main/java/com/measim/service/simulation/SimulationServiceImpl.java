@@ -10,6 +10,7 @@ import com.measim.service.comparison.ComparisonService;
 import com.measim.service.infrastructure.InfrastructureService;
 import com.measim.service.metrics.MetricsService;
 import com.measim.service.property.PropertyService;
+import com.measim.service.reserve.ReserveService;
 import com.measim.service.snapshot.SnapshotService;
 import com.measim.service.world.WorldGenerationService;
 import jakarta.inject.Inject;
@@ -32,6 +33,7 @@ public class SimulationServiceImpl implements SimulationService {
     private final GovernanceService governanceService;
     private final InfrastructureService infrastructureService;
     private final PropertyService propertyService;
+    private final ReserveService reserveService;
     private final MetricsService metricsService;
     private final SnapshotService snapshotService;
     private final ComparisonService comparisonService;
@@ -52,6 +54,7 @@ public class SimulationServiceImpl implements SimulationService {
                                   GovernanceService governanceService,
                                   InfrastructureService infrastructureService,
                                   PropertyService propertyService,
+                                  ReserveService reserveService,
                                   MetricsService metricsService,
                                   SnapshotService snapshotService,
                                   ComparisonService comparisonService,
@@ -66,6 +69,7 @@ public class SimulationServiceImpl implements SimulationService {
         this.governanceService = governanceService;
         this.infrastructureService = infrastructureService;
         this.propertyService = propertyService;
+        this.reserveService = reserveService;
         this.metricsService = metricsService;
         this.snapshotService = snapshotService;
         this.comparisonService = comparisonService;
@@ -105,6 +109,7 @@ public class SimulationServiceImpl implements SimulationService {
         gameMasterService.initializeBaseTechTree();
         governanceService.initializeGovernments();
         propertyService.initializePropertySystem();
+        reserveService.initializeReserve();
 
         System.out.println("Spawning " + config.agentCount() + " agents...");
         agentSpawningService.spawnAgents();
@@ -155,9 +160,13 @@ public class SimulationServiceImpl implements SimulationService {
                 int yr = currentTick / config.ticksPerYear();
                 var m = metricsService.getLatest();
                 if (m != null)
-                    System.out.printf("  Year %d/%d | Gini: %.3f | Env: %.3f | Avg Credits: %.0f | Robots: %d%n",
+                    System.out.printf("  Year %d/%d | Gini: %.3f | Env: %.3f | Avg Credits: %.0f | Robots: %d | Reserve: %.1f%%%n",
                             yr, config.totalYears(), m.giniCoefficient(),
-                            m.environmentalHealth(), m.averageCredits(), m.totalRobots());
+                            m.environmentalHealth(), m.averageCredits(), m.totalRobots(),
+                            reserveService.reserveRatio() * 100);
+
+                // GM manages reserve yearly (Opus call)
+                reserveService.gmManageReserve(currentTick);
             }
 
             // Save snapshots

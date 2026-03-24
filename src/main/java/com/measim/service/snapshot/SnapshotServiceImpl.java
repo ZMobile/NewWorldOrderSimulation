@@ -13,6 +13,7 @@ import com.measim.model.infrastructure.Infrastructure;
 import com.measim.model.property.TileClaim;
 import com.measim.model.risk.RiskEvent;
 import com.measim.model.service.ServiceInstance;
+import com.measim.service.reserve.ReserveService;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -34,6 +35,7 @@ public class SnapshotServiceImpl implements SnapshotService {
     private final ContractDao contractDao;
     private final PropertyDao propertyDao;
     private final LlmDao llmDao;
+    private final ReserveService reserveService;
 
     @Inject
     public SnapshotServiceImpl(AgentDao agentDao, MetricsDao metricsDao,
@@ -41,7 +43,7 @@ public class SnapshotServiceImpl implements SnapshotService {
                                 CommunicationDao communicationDao, RiskDao riskDao,
                                 InfrastructureDao infraDao, ServiceDao serviceDao,
                                 ContractDao contractDao, PropertyDao propertyDao,
-                                LlmDao llmDao) {
+                                LlmDao llmDao, ReserveService reserveService) {
         this.agentDao = agentDao;
         this.metricsDao = metricsDao;
         this.techRegistryDao = techRegistryDao;
@@ -52,6 +54,7 @@ public class SnapshotServiceImpl implements SnapshotService {
         this.contractDao = contractDao;
         this.propertyDao = propertyDao;
         this.llmDao = llmDao;
+        this.reserveService = reserveService;
         this.mapper = new ObjectMapper();
         this.mapper.enable(SerializationFeature.INDENT_OUTPUT);
     }
@@ -179,6 +182,22 @@ public class SnapshotServiceImpl implements SnapshotService {
                 propertyNode.put("topLandlordClaims", e.getValue());
             });
         }
+
+        // Commodity reserve
+        ObjectNode reserveNode = root.putObject("commodityReserve");
+        var reserve = reserveService.getReserve();
+        reserveNode.put("totalValue", reserve.totalValue());
+        reserveNode.put("ratio", reserveService.reserveRatio());
+        reserveNode.put("minimumRatio", reserve.minimumRatio());
+        ObjectNode holdingsNode = reserveNode.putObject("holdings");
+        for (var entry : reserve.holdings().entrySet()) {
+            holdingsNode.put(entry.getKey(), entry.getValue());
+        }
+        ObjectNode valuationsNode = reserveNode.putObject("valuations");
+        for (var entry : reserve.valuations().entrySet()) {
+            valuationsNode.put(entry.getKey(), entry.getValue());
+        }
+        reserveNode.put("totalTransactions", reserve.transactionLog().size());
 
         // Discoveries
         ArrayNode discoveriesNode = root.putArray("discoveries");

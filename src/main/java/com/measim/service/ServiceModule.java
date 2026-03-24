@@ -15,6 +15,7 @@ import com.measim.service.gamemaster.*;
 import com.measim.service.comparison.*;
 import com.measim.service.governance.*;
 import com.measim.service.infrastructure.*;
+import com.measim.service.reserve.*;
 import com.measim.service.risk.*;
 import com.measim.service.llm.*;
 import com.measim.service.snapshot.*;
@@ -60,6 +61,9 @@ public class ServiceModule extends AbstractModule {
 
         // Risk services
         bind(RiskService.class).to(RiskServiceImpl.class).in(Singleton.class);
+
+        // Reserve services
+        bind(ReserveService.class).to(ReserveServiceImpl.class).in(Singleton.class);
 
         // Externality services
         bind(ExternalityService.class).to(ExternalityServiceImpl.class).in(Singleton.class);
