@@ -51,6 +51,7 @@ public class ActionExecutionPhase implements TickPhase {
     private final PropertyService propertyService;
     private final ContractService contractService;
     private final SimulationConfig config;
+    private SubsistenceHelper subsistenceHelper;
 
     @Inject
     public ActionExecutionPhase(DecisionPhase decisionPhase, AgentDao agentDao, WorldDao worldDao,
@@ -58,7 +59,8 @@ public class ActionExecutionPhase implements TickPhase {
                                  ProductionService productionService, EnvironmentService environmentService,
                                  GameMasterService gameMasterService, InfrastructureService infrastructureService,
                                  AgentServiceManager agentServiceManager, PropertyService propertyService,
-                                 ContractService contractService, SimulationConfig config) {
+                                 ContractService contractService, PropertyDao propertyDao,
+                                 ContractDao contractDao, SimulationConfig config) {
         this.decisionPhase = decisionPhase;
         this.agentDao = agentDao;
         this.worldDao = worldDao;
@@ -72,6 +74,7 @@ public class ActionExecutionPhase implements TickPhase {
         this.propertyService = propertyService;
         this.contractService = contractService;
         this.config = config;
+        this.subsistenceHelper = new SubsistenceHelper(worldDao, propertyDao, contractDao);
     }
 
     @Override public String name() { return "Action Execution"; }
@@ -81,9 +84,17 @@ public class ActionExecutionPhase implements TickPhase {
     public void execute(int currentTick) {
         MarketDao.MarketData market = marketDao.getAllMarkets().iterator().next();
 
-        // Phase A: Deterministic economic pipeline (fast, no LLM)
+        // Phase A: Subsistence + deterministic economic pipeline (fast, no LLM)
+        Set<String> incapacitatedAgents = new HashSet<>();
         for (Agent agent : agentDao.getAllAgents()) {
-            consume(agent);
+            boolean incapacitated = subsistenceHelper.processNeeds(agent, currentTick);
+            if (incapacitated) {
+                incapacitatedAgents.add(agent.id());
+                // Incapacitated: can only extract and buy food (survival mode)
+                autoExtract(agent);
+                autoBuy(agent, market, currentTick);
+                continue;
+            }
             autoExtract(agent);
             autoProduce(agent, currentTick);
             autoSell(agent, market, currentTick);
@@ -98,6 +109,8 @@ public class ActionExecutionPhase implements TickPhase {
         for (Agent agent : agentDao.getAllAgents()) {
             AgentAction action = decisionPhase.pendingActions().get(agent.id());
             if (action == null || action instanceof AgentAction.Idle) continue;
+
+            if (incapacitatedAgents.contains(agent.id())) continue; // survival mode only
 
             if (action instanceof AgentAction.BuildInfrastructure
                     || action instanceof AgentAction.CreateService
@@ -130,9 +143,9 @@ public class ActionExecutionPhase implements TickPhase {
             }
         }
 
-        // Phase C: Novel actions — periodic GM interaction for all archetypes.
+        // Phase C: Novel actions — periodic GM interaction for non-incapacitated agents.
         for (Agent agent : agentDao.getAllAgents()) {
-            // Step 8: NOVEL ACTIONS — periodic GM interaction for all archetypes.
+            if (incapacitatedAgents.contains(agent.id())) continue;
             if (currentTick % 6 == 0 && shouldTriggerNovelAction(agent, currentTick)) {
                 double stake = Math.min(agent.state().credits() * 0.03, 200);
                 if (stake > 10) {
@@ -146,39 +159,7 @@ public class ActionExecutionPhase implements TickPhase {
         }
     }
 
-    // ====== CONSUMPTION (creates demand) ======
-
-    private void consume(Agent agent) {
-        AgentState state = agent.state();
-        ItemType food = ItemType.of(ProductType.FOOD);
-        ItemType goods = ItemType.of(ProductType.BASIC_GOODS);
-        ItemType medicine = ItemType.of(ProductType.MEDICINE);
-
-        // FOOD is required: consume 1 per tick. No food = satisfaction drops.
-        if (state.getInventoryCount(food) > 0) {
-            state.removeFromInventory(food, 1);
-            state.setSatisfaction(state.satisfaction() + 0.02); // fed
-        } else {
-            state.setSatisfaction(state.satisfaction() - 0.05); // hungry
-        }
-
-        // BASIC_GOODS are optional: consume 1 per 3 ticks for comfort.
-        if (state.getInventoryCount(goods) > 0) {
-            state.removeFromInventory(goods, 1);
-            state.setSatisfaction(state.satisfaction() + 0.01);
-        }
-
-        // MEDICINE is optional: helps recover satisfaction if low.
-        if (state.satisfaction() < 0.4 && state.getInventoryCount(medicine) > 0) {
-            state.removeFromInventory(medicine, 1);
-            state.setSatisfaction(state.satisfaction() + 0.05);
-        }
-
-        // Natural satisfaction decay toward neutral
-        if (state.satisfaction() > 0.5) {
-            state.setSatisfaction(state.satisfaction() - 0.005);
-        }
-    }
+    // Consumption is now handled by SubsistenceHelper
 
     // ====== EXTRACTION (inventory gain, no credits) ======
 
