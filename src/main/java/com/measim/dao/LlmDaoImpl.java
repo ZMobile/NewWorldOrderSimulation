@@ -85,7 +85,7 @@ public class LlmDaoImpl implements LlmDao {
             totalSpent.add(response.costUsd());
             int n = totalCalls.incrementAndGet();
             if (n % 10 == 0 || n <= 3) {
-                System.out.printf("      [LLM] Call #%d (%s) — $%.4f this call, $%.2f total%n",
+                System.out.printf("      [LLM] Call #%d (%s) - $%.4f this call, $%.2f total%n",
                         n, request.model(), response.costUsd(), totalSpent.sum());
             }
 

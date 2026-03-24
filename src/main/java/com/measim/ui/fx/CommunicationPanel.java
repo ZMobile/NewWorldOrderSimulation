@@ -3,10 +3,10 @@ package com.measim.ui.fx;
 import com.measim.dao.CommunicationDao;
 import com.measim.model.communication.Message;
 import javafx.scene.control.*;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
 
 import java.util.List;
 
@@ -35,10 +35,25 @@ public class CommunicationPanel extends VBox {
 
         searchField.setPromptText("Search messages...");
 
+        Button copySelectedBtn = new Button("Copy Selected");
+        copySelectedBtn.setOnAction(e -> {
+            String selected = messageList.getSelectionModel().getSelectedItem();
+            if (selected != null) copyToClipboard(selected);
+        });
+
+        Button copyAllBtn = new Button("Copy All");
+        copyAllBtn.setOnAction(e -> {
+            String all = String.join("\n", messageList.getItems());
+            copyToClipboard(all);
+        });
+
+        HBox buttons = new HBox(5, copySelectedBtn, copyAllBtn);
+
         messageList.setPrefHeight(250);
         messageList.setStyle("-fx-font-family: monospace; -fx-font-size: 11;");
+        messageList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
-        getChildren().addAll(title, channelFilter, searchField, messageList);
+        getChildren().addAll(title, channelFilter, searchField, buttons, messageList);
     }
 
     public void update(List<Message> messages) {
@@ -75,4 +90,10 @@ public class CommunicationPanel extends VBox {
 
     public ComboBox<String> getChannelFilter() { return channelFilter; }
     public TextField getSearchField() { return searchField; }
+
+    private void copyToClipboard(String text) {
+        ClipboardContent content = new ClipboardContent();
+        content.putString(text);
+        Clipboard.getSystemClipboard().setContent(content);
+    }
 }

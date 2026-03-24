@@ -72,15 +72,20 @@ public class SimulationViewer extends Application {
         communicationPanel.getChannelFilter().setOnAction(e -> updateComms());
         communicationPanel.getSearchField().textProperty().addListener((obs, o, n) -> updateComms());
 
-        // Main layout: map in center, panels on sides, console at bottom
-        javafx.scene.control.SplitPane centerSplit = new javafx.scene.control.SplitPane();
-        centerSplit.setOrientation(javafx.geometry.Orientation.VERTICAL);
-        centerSplit.getItems().addAll(canvasHolder, liveConsolePanel);
-        centerSplit.setDividerPositions(0.75);
+        // Horizontal split: map | right panel (draggable divider)
+        javafx.scene.control.SplitPane horizontalSplit = new javafx.scene.control.SplitPane();
+        horizontalSplit.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
+        horizontalSplit.getItems().addAll(canvasHolder, rightTabs);
+        horizontalSplit.setDividerPositions(0.65);
+
+        // Vertical split: (map+right) over console
+        javafx.scene.control.SplitPane verticalSplit = new javafx.scene.control.SplitPane();
+        verticalSplit.setOrientation(javafx.geometry.Orientation.VERTICAL);
+        verticalSplit.getItems().addAll(horizontalSplit, liveConsolePanel);
+        verticalSplit.setDividerPositions(0.72);
 
         BorderPane root = new BorderPane();
-        root.setCenter(centerSplit);
-        root.setRight(rightTabs);
+        root.setCenter(verticalSplit);
         root.setLeft(dashboardPanel);
 
         // Mouse interactions

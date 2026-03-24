@@ -4,6 +4,8 @@ import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -37,7 +39,14 @@ public class LiveConsolePanel extends VBox {
         Button clearBtn = new Button("Clear");
         clearBtn.setOnAction(e -> consoleList.getItems().clear());
 
-        HBox controls = new HBox(5, title, pauseBtn, clearBtn);
+        Button copyAllBtn = new Button("Copy All");
+        copyAllBtn.setOnAction(e -> {
+            ClipboardContent content = new ClipboardContent();
+            content.putString(String.join("\n", consoleList.getItems()));
+            Clipboard.getSystemClipboard().setContent(content);
+        });
+
+        HBox controls = new HBox(5, title, pauseBtn, clearBtn, copyAllBtn);
         controls.setStyle("-fx-padding: 3;");
 
         consoleList.setStyle("-fx-font-family: 'Consolas', 'Courier New', monospace; -fx-font-size: 11;");
