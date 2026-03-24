@@ -1,6 +1,7 @@
 package com.measim.ui.fx;
 
 import com.measim.dao.AgentDao;
+import com.measim.dao.CommunicationDao;
 import com.measim.dao.MetricsDao;
 import com.measim.dao.WorldDao;
 import com.measim.model.agent.Agent;
@@ -10,8 +11,12 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Label;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.Tab;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 public class SimulationViewer extends Application {
@@ -19,10 +24,12 @@ public class SimulationViewer extends Application {
     private static WorldDao worldDao;
     private static AgentDao agentDao;
     private static MetricsDao metricsDao;
+    private static CommunicationDao communicationDao;
 
     private HexRenderer hexRenderer;
     private InspectorPanel inspectorPanel;
     private DashboardPanel dashboardPanel;
+    private CommunicationPanel communicationPanel;
     private Canvas canvas;
 
     public static void setDependencies(WorldDao world, AgentDao agent, MetricsDao metrics) {
@@ -31,27 +38,42 @@ public class SimulationViewer extends Application {
         metricsDao = metrics;
     }
 
+    public static void setCommunicationDao(CommunicationDao comms) {
+        communicationDao = comms;
+    }
+
     @Override
     public void start(Stage primaryStage) {
         hexRenderer = new HexRenderer();
         inspectorPanel = new InspectorPanel();
         dashboardPanel = new DashboardPanel();
+        communicationPanel = new CommunicationPanel();
 
         canvas = new Canvas(800, 600);
-        Label statusBar = new Label("Click a tile to inspect. Scroll to zoom. Drag to pan.");
+        Label statusBar = new Label("Click a tile to inspect. Scroll to zoom. Drag to pan. Communication log at bottom.");
 
-        // Resizable canvas wrapper — canvas stretches to fill available space
         Pane canvasHolder = new Pane(canvas);
         canvas.widthProperty().bind(canvasHolder.widthProperty());
         canvas.heightProperty().bind(canvasHolder.heightProperty());
+        canvas.widthProperty().addListener((obs, o, n) -> redraw());
+        canvas.heightProperty().addListener((obs, o, n) -> redraw());
 
-        // Redraw when canvas resizes
-        canvas.widthProperty().addListener((obs, oldVal, newVal) -> redraw());
-        canvas.heightProperty().addListener((obs, oldVal, newVal) -> redraw());
+        // Right panel: tabs for Inspector and Communication
+        TabPane rightTabs = new TabPane();
+        Tab inspectorTab = new Tab("Inspector", inspectorPanel);
+        inspectorTab.setClosable(false);
+        Tab commsTab = new Tab("Communication Log", communicationPanel);
+        commsTab.setClosable(false);
+        rightTabs.getTabs().addAll(inspectorTab, commsTab);
+        rightTabs.setPrefWidth(420);
+
+        // Wire filter/search to update
+        communicationPanel.getChannelFilter().setOnAction(e -> updateComms());
+        communicationPanel.getSearchField().textProperty().addListener((obs, o, n) -> updateComms());
 
         BorderPane root = new BorderPane();
         root.setCenter(canvasHolder);
-        root.setRight(inspectorPanel);
+        root.setRight(rightTabs);
         root.setLeft(dashboardPanel);
         root.setBottom(statusBar);
 
@@ -70,6 +92,7 @@ public class SimulationViewer extends Application {
                     }
                 }
             }
+            rightTabs.getSelectionModel().select(inspectorTab);
         });
 
         canvas.setOnScroll(e -> {
@@ -87,21 +110,26 @@ public class SimulationViewer extends Application {
             redraw();
         });
 
-        Scene scene = new Scene(root, 1400, 800);
+        Scene scene = new Scene(root, 1500, 850);
         primaryStage.setTitle("MeaSim — New World Order Simulation");
         primaryStage.setScene(scene);
         primaryStage.show();
 
         redraw();
-        if (metricsDao != null) {
-            dashboardPanel.update(metricsDao.getHistory());
-        }
+        if (metricsDao != null) dashboardPanel.update(metricsDao.getHistory());
+        updateComms();
     }
 
     private void redraw() {
         if (worldDao != null && worldDao.getGrid() != null) {
             hexRenderer.render(canvas.getGraphicsContext2D(), worldDao.getGrid(),
                     HexRenderer.RenderOptions.defaults());
+        }
+    }
+
+    private void updateComms() {
+        if (communicationDao != null) {
+            communicationPanel.update(communicationDao.getAllMessages());
         }
     }
 }

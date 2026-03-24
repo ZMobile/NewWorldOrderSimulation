@@ -151,7 +151,9 @@ public class SimulationServiceImpl implements SimulationService {
         System.out.println("Simulation complete.");
         try {
             metricsService.exportCsv(Path.of("output/metrics.csv"));
+            snapshotService.exportFullCommunicationLog(Path.of("output/communication_log.json"));
             System.out.println("Metrics exported to output/metrics.csv");
+            System.out.println("Communication log exported to output/communication_log.json");
         } catch (IOException e) {
             System.err.println("Failed to export metrics: " + e.getMessage());
         }

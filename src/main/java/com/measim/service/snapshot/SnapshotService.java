@@ -5,5 +5,6 @@ import java.nio.file.Path;
 
 public interface SnapshotService {
     void saveSnapshot(int currentTick, Path outputDir) throws IOException;
+    void exportFullCommunicationLog(Path outputPath) throws IOException;
     void loadSnapshot(Path snapshotFile) throws IOException;
 }

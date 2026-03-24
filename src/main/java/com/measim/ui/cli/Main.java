@@ -3,6 +3,7 @@ package com.measim.ui.cli;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.measim.dao.AgentDao;
+import com.measim.dao.CommunicationDao;
 import com.measim.dao.MetricsDao;
 import com.measim.dao.WorldDao;
 import com.measim.model.config.SimulationConfig;
@@ -86,6 +87,7 @@ public class Main {
                     injector.getInstance(AgentDao.class),
                     injector.getInstance(MetricsDao.class)
             );
+            SimulationViewer.setCommunicationDao(injector.getInstance(CommunicationDao.class));
             Platform.runLater(() -> {
                 try {
                     new SimulationViewer().start(new javafx.stage.Stage());
