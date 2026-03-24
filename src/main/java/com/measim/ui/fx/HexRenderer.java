@@ -165,6 +165,9 @@ public class HexRenderer {
         public static RenderOptions defaults() {
             return new RenderOptions(true, true, true, true, null);
         }
+        public static RenderOptions basic() {
+            return new RenderOptions(true, true, false, false, null);
+        }
         public static RenderOptions withAgents(List<Agent> agents) {
             return new RenderOptions(true, true, true, true, agents);
         }

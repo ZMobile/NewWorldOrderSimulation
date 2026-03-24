@@ -110,6 +110,48 @@ public class LauncherWindow extends Application {
         llmGrid.addRow(1, new Label("Model:"), modelChoice);
         llmGrid.addRow(2, new Label("Budget ($):"), budget);
 
+        // Map preview
+        Label previewHeader = new Label("Map Preview");
+        previewHeader.setFont(Font.font("System", FontWeight.BOLD, 14));
+
+        javafx.scene.canvas.Canvas previewCanvas = new javafx.scene.canvas.Canvas(460, 300);
+        previewCanvas.setStyle("-fx-border-color: #ccc;");
+        Label previewInfo = new Label("Click 'Preview Map' to generate");
+        previewInfo.setStyle("-fx-text-fill: #888; -fx-font-size: 11;");
+
+        Button previewBtn = new Button("Preview Map");
+        previewBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
+        previewBtn.setOnAction(ev -> {
+            try {
+                previewInfo.setText("Generating...");
+                int w = worldWidth.getValue(), h = worldHeight.getValue();
+                long s = (long) seed.getValue();
+
+                // Generate a temporary world for preview
+                var tempConfig = com.measim.model.config.SimulationConfig.withSeed(s, w, h);
+                var tempWorldDao = new com.measim.dao.WorldDaoImpl();
+                var tempGen = new com.measim.service.world.WorldGenerationServiceImpl(tempWorldDao, tempConfig);
+                tempGen.generateWorld();
+
+                // Render preview
+                var renderer = new HexRenderer();
+                renderer.render(previewCanvas.getGraphicsContext2D(), tempWorldDao.getGrid(),
+                        HexRenderer.RenderOptions.basic());
+
+                int settlements = (int) tempWorldDao.getAllTiles().stream()
+                        .filter(t -> t.isSettlementZone()).count();
+                int resourceTiles = (int) tempWorldDao.getAllTiles().stream()
+                        .filter(t -> !t.resources().isEmpty()).count();
+                previewInfo.setText(String.format("Seed %d: %dx%d, %d tiles, %d settlements, %d with resources",
+                        s, w, h, tempWorldDao.getAllTiles().size(), settlements, resourceTiles));
+            } catch (Exception ex) {
+                previewInfo.setText("Preview failed: " + ex.getMessage());
+            }
+        });
+
+        HBox previewButtons = new HBox(10, previewBtn, previewInfo);
+        previewButtons.setAlignment(Pos.CENTER_LEFT);
+
         // Start button
         Button startButton = new Button("Start Simulation");
         startButton.setFont(Font.font("System", FontWeight.BOLD, 16));
@@ -142,6 +184,7 @@ public class LauncherWindow extends Application {
         VBox layout = new VBox(15,
                 title, subtitle, new Separator(),
                 worldHeader, worldGrid, new Separator(),
+                previewHeader, previewButtons, previewCanvas, new Separator(),
                 agentHeader, agentGrid, new Separator(),
                 measHeader, measEnabled, measHint, new Separator(),
                 llmHeader, llmEnabled, llmGrid, new Separator(),
@@ -153,7 +196,7 @@ public class LauncherWindow extends Application {
         ScrollPane scroll = new ScrollPane(layout);
         scroll.setFitToWidth(true);
 
-        Scene scene = new Scene(scroll, 500, 700);
+        Scene scene = new Scene(scroll, 520, 950);
         stage.setTitle("MeaSim Launcher");
         stage.setScene(scene);
         stage.show();

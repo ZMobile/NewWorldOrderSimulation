@@ -198,6 +198,15 @@ public class SimulationConfig {
     public double environmentalCrisisThreshold() { return environmentalCrisisThreshold; }
     public List<GovernmentDef> governments() { return governments; }
 
+    /** Create a minimal config for map preview — only seed, width, height matter. */
+    public static SimulationConfig withSeed(long seed, int width, int height) {
+        SimulationConfig c = new SimulationConfig();
+        c.seed = seed;
+        c.worldWidth = width;
+        c.worldHeight = height;
+        return c;
+    }
+
     public record GovernmentDef(String name, int q1, int r1, int q2, int r2,
                                 double efWeight, double ubiMultiplier, double domainTwoStrictness) {}
 }

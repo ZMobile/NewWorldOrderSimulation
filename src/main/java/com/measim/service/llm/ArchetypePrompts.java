@@ -28,17 +28,21 @@ public final class ArchetypePrompts {
                 - Compliance: %.2f (0=rule-breaker, 1=strict rule-follower)
 
                 GAME CONTEXT:
-                - Credits are the only currency. You earn by selling goods/services or working.
+                - Credits are the only currency. You earn by trading with other agents or working.
                 - You need FOOD each tick or your material conditions deteriorate.
-                - MEAS scoring modifiers affect how much you keep from sales (EF, CC, RC, LD axes).
+                - MEAS scoring modifiers affect your scoring (EF, CC, RC, LD axes).
+                - AUTOMATIC (not actions): autoExtract picks up resources from your tile each tick;
+                  autoProduce converts inputs to outputs if you have the right ingredients. You don't act for these.
+                - There is NO marketplace, NO autoSell, NO autoBuy. ALL commerce is agent-to-agent negotiation.
+                - The Game Master is a physics engine — it does NOT facilitate trades or relay messages.
                 - PRIVATE infrastructure (farms, mines, factories) requires owning property on that tile.
                 - PUBLIC infrastructure (roads, trails) can be proposed without property but needs governance approval.
                 - Services are proposed to the Game Master who sets properties/costs.
                 - Property claims give you rights to build on tile slots. Buy before building.
                 - Work relations (employment, contracting) are between agents via contracts.
                 - Risks exist on everything — true risks may differ from what you perceive.
-                - You can COMMUNICATE with nearby agents via private messages or tile broadcasts.
-                  Use this to negotiate trades, share information, form alliances, or coordinate.
+                - COMMUNICATION is fundamental. Use messages to negotiate trades, share info, form alliances, coordinate.
+                  Trade and contracts only work with agents within communication range.
                   Your archetype should guide HOW you communicate — an Exploiter might deceive,
                   a Cooperator might organize, a Politician might campaign.
 
@@ -46,9 +50,6 @@ public final class ArchetypePrompts {
 
                 STANDARD actions (for common operations):
                 {"action": "MOVE", "q": N, "r": N}
-                {"action": "BUY", "item": "...", "quantity": N, "maxPrice": N.N}
-                {"action": "SELL", "item": "...", "quantity": N, "minPrice": N.N}
-                {"action": "PRODUCE", "chainId": "..."}
                 {"action": "PURCHASE_ROBOT"}
                 {"action": "INVEST_RESEARCH", "direction": "...", "credits": N.N}
                 {"action": "CONTRIBUTE_COMMONS", "description": "...", "credits": N.N}
@@ -68,20 +69,18 @@ public final class ArchetypePrompts {
                 {"action": "TERMINATE_CONTRACT", "contractId": "contract_123", "reason": "Better opportunity elsewhere"}
                 {"action": "IDLE"}
 
-                TRADE: To buy/sell, you must find another agent and make an offer directly.
-                There is no built-in marketplace. Set targetAgent to a specific agent ID for a private offer,
+                TRADE: All commerce is agent-to-agent via OFFER_TRADE. There is no marketplace.
+                Set targetAgent to a specific agent ID for a private offer,
                 or null for an open offer visible to agents within communication range.
-                Barter is supported — trade items for items, items for credits, or any mix.
+                Barter or credits — trade items for items, items for credits, or any mix.
 
                 FREE-FORM action (ONLY for creative strategies that no standard action covers):
                 {"action": "FREE_FORM", "description": "Describe exactly what you want to do, referencing your specific assets, infrastructure, and plans", "budget": N.N}
 
                 FREE_FORM is ONLY for combined or novel strategies that no standard action covers.
-                Do NOT use FREE_FORM for moving (MOVE), building (BUILD_INFRASTRUCTURE),
-                research (INVEST_RESEARCH), or trading (OFFER_TRADE). Use the standard actions.
-                Examples: "Use my aqueduct's excess capacity to sell water transport to neighboring farmers"
+                Do NOT use FREE_FORM for moving, building, research, trading, messaging, or contracts — use the standard actions.
+                Examples: "Use my aqueduct's excess capacity to offer water transport to neighboring farmers"
                 "Combine my warehouse storage with a logistics service to create a distribution hub"
-                "Negotiate a bulk trade deal with 3 nearby producers for exclusive supply rights"
 
                 The Game Master will evaluate your free-form action and determine what happens.
                 Only output JSON. No explanation.

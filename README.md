@@ -333,7 +333,7 @@ Service categories: financial, logistics, healthcare, education, legal, security
 |---|-------|------|-------------|
 | 1 | Perception | No | Agents observe environment, update risk perceptions from events |
 | 2 | Decision | **Tier 1+2** | Deterministic for all agents, then LLM escalation for eligible agents (20-50% per tick) |
-| 3 | Action | Partial | Deterministic survival (consume→extract→produce→move) + LLM-driven trade (offer/accept/reject/negotiate) + strategic action + GM eval |
+| 3 | Action | Partial | Deterministic physics (autoExtract→autoProduce) + LLM-driven actions: trade (offer/accept/reject/negotiate), messaging, contract negotiation, infrastructure proposals + GM eval |
 | 4 | Market | No | Proximity-based trades resolve, MEAS modifiers applied, credits flow |
 | 5 | Contracts | No | Wages paid, rent collected, service subscriptions, breach detection |
 | 6 | Scoring | No | Score vectors recomputed, modifiers updated, audit trail |
@@ -389,7 +389,7 @@ export ANTHROPIC_API_KEY=your-key-here
 $env:ANTHROPIC_API_KEY = "your-key-here"
 ```
 
-Or enter it in the launcher UI's API Key field. Default model: Claude Sonnet 4.6 (`claude-sonnet-4-6`). When API credits run out, the simulation pauses with options to continue (after reloading credits), skip to deterministic-only mode, or leave paused for inspection. A status bar shows LLM state with a resume button.
+Or enter it in the launcher UI's API Key field. Default model: Claude Sonnet 4.6 (`claude-sonnet-4-6`). When API credits run out, the simulation pauses with options to continue (after reloading credits), skip to deterministic-only mode, or leave paused for inspection. A status bar shows LLM state with a resume button and a live cost tracker displaying cumulative API spend.
 
 ### Free-Form Agent Actions
 
@@ -399,7 +399,7 @@ Agents route survival operations (extract, produce, move) through the determinis
 {"action": "FREE_FORM", "description": "Use my aqueduct's excess capacity to sell water transport to neighboring farmers while running my drill at half capacity to reduce wear", "budget": 200}
 ```
 
-The Game Master translates this into concrete game mechanics: what resources change, what it costs, what risks and byproducts it creates, what experience domain it exercises. Standard action types (MOVE, BUY, SELL, PRODUCE) handle all routine operations deterministically without LLM involvement.
+The Game Master translates this into concrete game mechanics: what resources change, what it costs, what risks and byproducts it creates, what experience domain it exercises. Standard action types (MOVE, EXTRACT, PRODUCE) handle physics deterministically. Contract negotiation (OFFER_JOB, ACCEPT_JOB, PROPOSE_CONTRACT, ACCEPT_CONTRACT, TERMINATE_CONTRACT) lets agents negotiate work agreements, rentals, and partnerships directly.
 
 ### Agent Experience & Specialization
 
@@ -444,7 +444,7 @@ Agents have real survival needs with graduated consequences:
 
 - **Food**: consume 1 FOOD/tick or penalties escalate (mild hunger → serious → starvation)
 - **Shelter**: need property claim, rental contract, or settlement zone access
-- **Incapacitation**: at satisfaction 0.1, agents enter survival mode — can only extract and buy food. Creates genuine UBI dependence.
+- **Incapacitation**: at satisfaction 0.1, agents enter survival mode — can only extract and trade for food. Creates genuine UBI dependence.
 - **Grace period**: first 6 ticks have no penalties while the economy bootstraps
 - **Safety valves**: starting credits buy ~300 ticks of food, foraging needs only 1 resource input, settlement zones = shelter
 
