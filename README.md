@@ -349,7 +349,7 @@ java -jar build/libs/measim-0.1.0.jar --compare --config config/default.yaml
 
 Set your Anthropic API key for LLM-powered Game Master and agent escalation:
 ```bash
-export ANTHROPIC_API_KEY=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
+export ANTHROPIC_API_KEY=your-key-here
 ```
 
 Or in `config/default.yaml`:
