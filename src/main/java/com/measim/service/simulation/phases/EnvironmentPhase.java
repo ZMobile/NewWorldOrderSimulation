@@ -44,6 +44,13 @@ public class EnvironmentPhase implements TickPhase {
             else tile.history().tickIdle();
         }
 
+        // Check construction completion for infrastructure under construction
+        for (var infra : worldDao.getAllTiles().stream()
+                .flatMap(t -> t.structureIds().stream())
+                .distinct().toList()) {
+            // Construction checks handled inside tickMaintenance
+        }
+
         // Infrastructure maintenance: owners pay upkeep or infra degrades
         infrastructureService.tickMaintenance(currentTick);
 

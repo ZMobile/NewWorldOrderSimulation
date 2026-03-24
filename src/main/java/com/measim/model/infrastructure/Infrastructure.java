@@ -14,20 +14,42 @@ public class Infrastructure {
     private final HexCoord location;       // where it's built
     private final HexCoord connectedTo;    // source tile for POINT_TO_POINT, null for AREA/LOCAL
     private final int builtTick;
+    private final int constructionTicks;   // how many ticks to build (GM sets this)
     private double condition;              // 1.0 = perfect, degrades without maintenance
     private boolean active;
+    private boolean underConstruction;
 
     public Infrastructure(String id, InfrastructureType type, String ownerId,
                           HexCoord location, HexCoord connectedTo, int builtTick) {
+        this(id, type, ownerId, location, connectedTo, builtTick, 0);
+    }
+
+    public Infrastructure(String id, InfrastructureType type, String ownerId,
+                          HexCoord location, HexCoord connectedTo, int builtTick,
+                          int constructionTicks) {
         this.id = id;
         this.type = type;
         this.ownerId = ownerId;
         this.location = location;
         this.connectedTo = connectedTo;
         this.builtTick = builtTick;
+        this.constructionTicks = constructionTicks;
         this.condition = 1.0;
-        this.active = true;
+        this.underConstruction = constructionTicks > 0;
+        this.active = !underConstruction;
     }
+
+    /**
+     * Check if construction is complete. Call each tick.
+     */
+    public void checkConstruction(int currentTick) {
+        if (underConstruction && currentTick >= builtTick + constructionTicks) {
+            underConstruction = false;
+            active = true;
+        }
+    }
+
+    public boolean isUnderConstruction() { return underConstruction; }
 
     /**
      * Pay maintenance to keep infrastructure running.

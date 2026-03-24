@@ -71,9 +71,11 @@ public class InfrastructureServiceImpl implements InfrastructureService {
         if (!agent.state().spendCredits(type.constructionCost()))
             return new BuildResult(false, "Cannot afford " + type.constructionCost() + " credits", null);
 
-        // Build it
+        // Build it — construction time proportional to cost
+        // Cheap (<200): instant. Medium (200-500): 1-2 ticks. Expensive (500+): 3+ ticks.
+        int constructionTicks = (int) Math.max(0, Math.floor(type.constructionCost() / 200.0) - 1);
         String id = "infra_" + UUID.randomUUID().toString().substring(0, 8);
-        Infrastructure infra = new Infrastructure(id, type, agentId, location, connectTo, currentTick);
+        Infrastructure infra = new Infrastructure(id, type, agentId, location, connectTo, currentTick, constructionTicks);
         infraDao.place(infra);
         tile.addStructure(id);
 
@@ -164,6 +166,11 @@ public class InfrastructureServiceImpl implements InfrastructureService {
 
     @Override
     public void tickMaintenance(int currentTick) {
+        // Check construction completion for all infrastructure
+        for (Infrastructure infra : infraDao.getAll()) {
+            infra.checkConstruction(currentTick);
+        }
+
         for (Infrastructure infra : infraDao.getAllActive()) {
             var agent = agentDao.getAgent(infra.ownerId());
             boolean canPay = agent != null && agent.state().credits() >= infra.type().maintenanceCostPerTick();
