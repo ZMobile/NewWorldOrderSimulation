@@ -97,6 +97,30 @@ public class HexRenderer {
         offsetY += dy;
     }
 
+    /** Auto-fit the entire grid to the canvas. */
+    public void fitToCanvas(double canvasWidth, double canvasHeight, HexGrid grid) {
+        // Find bounding box of all tiles in pixel space (at zoom=1, offset=0)
+        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
+        double maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
+        for (Tile tile : grid.getAllTiles()) {
+            double cx = HEX_SIZE * Math.sqrt(3.0) * (tile.coord().q() + tile.coord().r() / 2.0);
+            double cy = HEX_SIZE * 1.5 * tile.coord().r();
+            minX = Math.min(minX, cx - HEX_SIZE);
+            minY = Math.min(minY, cy - HEX_SIZE);
+            maxX = Math.max(maxX, cx + HEX_SIZE);
+            maxY = Math.max(maxY, cy + HEX_SIZE);
+        }
+        double gridWidth = maxX - minX;
+        double gridHeight = maxY - minY;
+        if (gridWidth <= 0 || gridHeight <= 0) return;
+
+        // Zoom to fit, with some padding
+        double padding = 10;
+        zoom = Math.min((canvasWidth - padding * 2) / gridWidth, (canvasHeight - padding * 2) / gridHeight);
+        offsetX = padding - minX * zoom;
+        offsetY = padding - minY * zoom;
+    }
+
     public void zoom(double factor, double pivotX, double pivotY) {
         double oldZoom = zoom;
         zoom = Math.max(0.1, Math.min(5.0, zoom * factor));

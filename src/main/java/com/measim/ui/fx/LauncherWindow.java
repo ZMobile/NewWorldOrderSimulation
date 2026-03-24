@@ -133,8 +133,9 @@ public class LauncherWindow extends Application {
                 var tempGen = new com.measim.service.world.WorldGenerationServiceImpl(tempWorldDao, tempConfig);
                 tempGen.generateWorld();
 
-                // Render preview
+                // Render preview — fit entire map to canvas
                 var renderer = new HexRenderer();
+                renderer.fitToCanvas(previewCanvas.getWidth(), previewCanvas.getHeight(), tempWorldDao.getGrid());
                 renderer.render(previewCanvas.getGraphicsContext2D(), tempWorldDao.getGrid(),
                         HexRenderer.RenderOptions.basic());
 
