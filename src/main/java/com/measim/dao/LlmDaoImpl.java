@@ -36,6 +36,7 @@ public class LlmDaoImpl implements LlmDao {
     );
 
     private final SimulationConfig config;
+    private final com.measim.service.llm.BudgetPauseHandler budgetPauseHandler;
     private final ObjectMapper mapper = new ObjectMapper();
     private final HttpClient httpClient;
     private final ExecutorService httpExecutor;
@@ -46,8 +47,9 @@ public class LlmDaoImpl implements LlmDao {
     private final Map<String, CachedResponse> cache = new ConcurrentHashMap<>();
 
     @Inject
-    public LlmDaoImpl(SimulationConfig config) {
+    public LlmDaoImpl(SimulationConfig config, com.measim.service.llm.BudgetPauseHandler budgetPauseHandler) {
         this.config = config;
+        this.budgetPauseHandler = budgetPauseHandler;
         // Dedicated thread pool for HTTP — avoids ForkJoinPool starvation
         this.httpExecutor = Executors.newFixedThreadPool(100,
                 r -> { Thread t = new Thread(r, "llm-http"); t.setDaemon(true); return t; });
@@ -86,8 +88,14 @@ public class LlmDaoImpl implements LlmDao {
             }
         }
 
-        // Check budget
+        // Check budget — pause simulation if exhausted, let user reload
         if (!canAfford(request)) {
+            boolean retry = budgetPauseHandler.pauseForBudget(totalSpent.sum(), config.totalBudgetUsd());
+            if (retry && canAfford(request)) {
+                // User added budget — retry the same request
+                return sendRequest(request);
+            }
+            // User cancelled or still can't afford — fall back to deterministic
             return CompletableFuture.completedFuture(
                     new LlmResponse("[LLM budget exhausted]", 0, 0, 0, request.model(), false));
         }

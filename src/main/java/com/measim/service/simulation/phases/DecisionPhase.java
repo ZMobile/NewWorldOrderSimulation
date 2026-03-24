@@ -39,6 +39,7 @@ public class DecisionPhase implements TickPhase {
     private final AgentDecisionService decisionService;
     private final LlmService llmService;
     private final com.measim.service.trade.TradeService tradeService;
+    private final com.measim.service.trade.CommunicationRangeService commRange;
     private final SimulationConfig config;
     private final Map<String, AgentAction> pendingActions = new HashMap<>();
 
@@ -46,6 +47,7 @@ public class DecisionPhase implements TickPhase {
     public DecisionPhase(AgentDao agentDao, MarketDao marketDao, WorldDao worldDao,
                           AgentDecisionService decisionService, LlmService llmService,
                           com.measim.service.trade.TradeService tradeService,
+                          com.measim.service.trade.CommunicationRangeService commRange,
                           SimulationConfig config) {
         this.agentDao = agentDao;
         this.marketDao = marketDao;
@@ -53,6 +55,7 @@ public class DecisionPhase implements TickPhase {
         this.decisionService = decisionService;
         this.llmService = llmService;
         this.tradeService = tradeService;
+        this.commRange = commRange;
         this.config = config;
     }
 
@@ -183,13 +186,46 @@ public class DecisionPhase implements TickPhase {
         sb.append(String.format("At (%d,%d), terrain: %s, env health: %.2f. ",
                 loc.q(), loc.r(), tile.terrain(), tile.environment().averageHealth()));
         if (!tile.resources().isEmpty()) {
-            sb.append("Resources: ");
+            sb.append("Local resources: ");
             for (var res : tile.resources()) {
                 if (!res.isDepleted()) sb.append(res.type()).append("(").append(String.format("%.0f", res.abundance())).append(") ");
             }
+            sb.append("\n");
         }
         if (tile.isSettlementZone()) sb.append("Settlement zone. ");
-        sb.append(String.format("Structures: %d.", tile.structureIds().size()));
+        sb.append(String.format("Structures: %d.\n", tile.structureIds().size()));
+
+        // Nearby agents within communication range
+        int range = commRange.getEffectiveRange(agent);
+        sb.append(String.format("Communication range: %d tiles.\n", range));
+        var nearby = agentDao.getAllAgents().stream()
+                .filter(a -> !a.id().equals(agent.id()))
+                .filter(a -> a.state().location().distanceTo(loc) <= range)
+                .limit(10) // cap to keep prompt size reasonable
+                .toList();
+        if (!nearby.isEmpty()) {
+            sb.append(String.format("Nearby agents (%d within range):\n", nearby.size()));
+            for (var a : nearby) {
+                sb.append(String.format("  %s (%s) at (%d,%d) dist=%d: %.0f credits, %s",
+                        a.id(), a.identity().archetype(),
+                        a.state().location().q(), a.state().location().r(),
+                        a.state().location().distanceTo(loc),
+                        a.state().credits(), a.state().employmentStatus()));
+                // Show what they have for trade potential
+                var inv = a.state().inventory();
+                if (!inv.isEmpty()) {
+                    sb.append(", has: ");
+                    inv.entrySet().stream()
+                            .filter(e -> e.getValue() > 0)
+                            .limit(5)
+                            .forEach(e -> sb.append(e.getKey()).append("x").append(e.getValue()).append(" "));
+                }
+                sb.append("\n");
+            }
+        } else {
+            sb.append("No agents within communication range.\n");
+        }
+
         return sb.toString();
     }
 

@@ -41,6 +41,7 @@ public class SimulationServiceImpl implements SimulationService {
     private final AgentDao agentDao;
     private final MarketDao marketDao;
     private final ProductionChainDao chainDao;
+    private final InfrastructureDao infrastructureDao;
     private final Set<TickPhase> phases;
     private int currentTick = 0;
     private boolean initialized = false;
@@ -60,6 +61,7 @@ public class SimulationServiceImpl implements SimulationService {
                                   ComparisonService comparisonService,
                                   WorldDao worldDao, AgentDao agentDao,
                                   MarketDao marketDao, ProductionChainDao chainDao,
+                                  InfrastructureDao infrastructureDao,
                                   Set<TickPhase> phases) {
         this.config = config;
         this.eventBus = eventBus;
@@ -77,6 +79,7 @@ public class SimulationServiceImpl implements SimulationService {
         this.agentDao = agentDao;
         this.marketDao = marketDao;
         this.chainDao = chainDao;
+        this.infrastructureDao = infrastructureDao;
         this.phases = phases;
     }
 
@@ -113,6 +116,13 @@ public class SimulationServiceImpl implements SimulationService {
 
         System.out.println("Spawning " + config.agentCount() + " agents...");
         agentSpawningService.spawnAgents();
+
+        // Optional: spawn communal gathering points at settlement cluster centers
+        // These give base communication range (+3) and marketplace effect.
+        // Represents a natural clearing/village square — not a building.
+        if (config.communalGatheringPoints()) {
+            spawnGatheringPoints(settlements);
+        }
 
         System.out.printf("World ready: %d tiles, %d settlements, %d markets, %d governments%n",
                 worldDao.getAllTiles().size(), settlements.size(), marketDao.getAllMarkets().size(),
@@ -202,6 +212,38 @@ public class SimulationServiceImpl implements SimulationService {
 
     @Override
     public int currentTick() { return currentTick; }
+
+    private void spawnGatheringPoints(java.util.List<com.measim.model.world.Tile> settlements) {
+        // Find cluster centers (settlement zones are placed with 15-tile spacing)
+        // Pick one tile per cluster to place a gathering point
+        java.util.Set<com.measim.model.world.HexCoord> placed = new java.util.HashSet<>();
+        for (var tile : settlements) {
+            if (placed.stream().anyMatch(p -> tile.coord().distanceTo(p) < 10)) continue;
+            placed.add(tile.coord());
+
+            // Create a communal gathering point — public infrastructure, no owner
+            var gatheringType = com.measim.model.infrastructure.InfrastructureType.predefined(
+                    "gathering_" + tile.coord().q() + "_" + tile.coord().r(),
+                    "Village Gathering Point",
+                    "A natural clearing where agents meet, trade, and communicate. Not a building.",
+                    com.measim.model.infrastructure.InfrastructureType.ConnectionMode.AREA_OF_EFFECT,
+                    java.util.List.of(
+                            new com.measim.model.infrastructure.InfrastructureEffect(
+                                    com.measim.model.infrastructure.InfrastructureEffect.EffectType.COMMUNICATION_RANGE, 5.0, null),
+                            new com.measim.model.infrastructure.InfrastructureEffect(
+                                    com.measim.model.infrastructure.InfrastructureEffect.EffectType.MARKETPLACE, 1.0, null)
+                    ),
+                    0, 0.1, // no construction cost, minimal maintenance
+                    5, 10   // range 5, capacity 10
+            );
+
+            infrastructureDao.registerType(gatheringType);
+            var infra = new com.measim.model.infrastructure.Infrastructure(
+                    gatheringType.id(), gatheringType, "PUBLIC", tile.coord(), null, 0);
+            infrastructureDao.place(infra);
+        }
+        System.out.printf("Placed %d communal gathering points at settlement clusters.%n", placed.size());
+    }
 
     private void registerDefaultChains() {
         var RT = com.measim.model.economy.ResourceType.class;

@@ -17,25 +17,31 @@ import java.util.*;
 public class AgentDecisionServiceImpl implements AgentDecisionService {
 
     private final WorldDao worldDao;
+    private final AgentDao agentDao;
     private final ProductionChainDao chainDao;
     private final InfrastructureDao infraDao;
     private final RiskDao riskDao;
     private final ServiceDao serviceDao;
     private final com.measim.service.property.PropertyService propertyService;
+    private final com.measim.service.trade.CommunicationRangeService commRange;
     private final SimulationConfig config;
 
     @Inject
-    public AgentDecisionServiceImpl(WorldDao worldDao, ProductionChainDao chainDao,
+    public AgentDecisionServiceImpl(WorldDao worldDao, AgentDao agentDao,
+                                     ProductionChainDao chainDao,
                                      InfrastructureDao infraDao, RiskDao riskDao,
                                      ServiceDao serviceDao,
                                      com.measim.service.property.PropertyService propertyService,
+                                     com.measim.service.trade.CommunicationRangeService commRange,
                                      SimulationConfig config) {
         this.worldDao = worldDao;
+        this.agentDao = agentDao;
         this.chainDao = chainDao;
         this.infraDao = infraDao;
         this.riskDao = riskDao;
         this.serviceDao = serviceDao;
         this.propertyService = propertyService;
+        this.commRange = commRange;
         this.config = config;
     }
 
@@ -207,6 +213,64 @@ public class AgentDecisionServiceImpl implements AgentDecisionService {
                 candidates.add(new ScoredAction(
                         new AgentAction.ConsumeService(svc.id()), serviceUtility));
                 break; // consider one service per tick
+            }
+        }
+
+        // Trade with nearby agents: offer surplus items for things we need
+        int range = commRange.getEffectiveRange(agent);
+        var nearbyAgents = agentDao.getAllAgents().stream()
+                .filter(a -> !a.id().equals(agent.id()))
+                .filter(a -> a.state().location().distanceTo(state.location()) <= range)
+                .toList();
+
+        if (!nearbyAgents.isEmpty()) {
+            // What do I have surplus of?
+            Map<ItemType, Integer> surplus = new HashMap<>();
+            for (var entry : state.inventory().entrySet()) {
+                if (entry.getValue() > 3) { // keep 3 of each for self
+                    surplus.put(entry.getKey(), entry.getValue() - 3);
+                }
+            }
+
+            // What do I need? (food is always high priority, then production inputs)
+            ItemType foodItem = ItemType.of(com.measim.model.economy.ProductType.FOOD);
+            boolean needFood = state.getInventoryCount(foodItem) < 2;
+
+            for (Agent neighbor : nearbyAgents) {
+                if (surplus.isEmpty()) break;
+
+                // Check what neighbor has that I need
+                if (needFood && neighbor.state().getInventoryCount(foodItem) > 3) {
+                    // Offer my surplus for their food
+                    for (var entry : surplus.entrySet()) {
+                        if (entry.getValue() > 0 && !entry.getKey().equals(foodItem)) {
+                            Map<ItemType, Integer> offering = Map.of(entry.getKey(), Math.min(2, entry.getValue()));
+                            Map<ItemType, Integer> requesting = Map.of(foodItem, 2);
+                            double tradeUtility = 25.0; // food is critical
+                            candidates.add(new ScoredAction(
+                                    new AgentAction.OfferTrade(neighbor.id(), offering, requesting,
+                                            0, 0, "Trading " + entry.getKey() + " for FOOD"),
+                                    tradeUtility));
+                            break;
+                        }
+                    }
+                }
+
+                // Offer surplus resources for credits (basic commerce)
+                if (!needFood && state.credits() < 500) {
+                    for (var entry : surplus.entrySet()) {
+                        if (entry.getValue() > 0 && neighbor.state().credits() > 20) {
+                            Map<ItemType, Integer> offering = Map.of(entry.getKey(), Math.min(3, entry.getValue()));
+                            double tradeUtility = 10.0 + profile.ambition() * 5;
+                            candidates.add(new ScoredAction(
+                                    new AgentAction.OfferTrade(neighbor.id(), offering, Map.of(),
+                                            0, entry.getValue() * 3.0, // ask ~3 credits per item
+                                            "Selling " + entry.getKey()),
+                                    tradeUtility));
+                            break;
+                        }
+                    }
+                }
             }
         }
 

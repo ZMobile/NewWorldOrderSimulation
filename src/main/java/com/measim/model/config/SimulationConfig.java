@@ -43,6 +43,7 @@ public class SimulationConfig {
     private int totalYears = 50;
     private int snapshotInterval = 12;
     private int metricsInterval = 1;
+    private boolean communalGatheringPoints = true;
     private int ubiDistributionInterval = 1;
     private double resourceDiscoveryProbability = 0.02;
     private double techBreakthroughProbability = 0.01;
@@ -181,6 +182,7 @@ public class SimulationConfig {
     public int maxAgentCallsPerTick() { return maxAgentCallsPerTick; }
     public int maxGameMasterCallsPerTick() { return maxGameMasterCallsPerTick; }
     public double totalBudgetUsd() { return totalBudgetUsd; }
+    public void setTotalBudgetUsd(double budget) { this.totalBudgetUsd = budget; }
     public boolean cacheEnabled() { return cacheEnabled; }
     public int cacheTtlTicks() { return cacheTtlTicks; }
     public boolean hasApiKey() { return apiKey != null && !apiKey.isEmpty(); }
@@ -189,6 +191,7 @@ public class SimulationConfig {
     public int totalTicks() { return ticksPerYear * totalYears; }
     public int snapshotInterval() { return snapshotInterval; }
     public int metricsInterval() { return metricsInterval; }
+    public boolean communalGatheringPoints() { return communalGatheringPoints; }
     public int ubiDistributionInterval() { return ubiDistributionInterval; }
     public double resourceDiscoveryProbability() { return resourceDiscoveryProbability; }
     public double techBreakthroughProbability() { return techBreakthroughProbability; }
