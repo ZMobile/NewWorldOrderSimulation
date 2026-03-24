@@ -122,8 +122,9 @@ public class SimulationViewer extends Application {
 
     private void redraw() {
         if (worldDao != null && worldDao.getGrid() != null) {
+            var agents = agentDao != null ? agentDao.getAllAgents() : java.util.List.<com.measim.model.agent.Agent>of();
             hexRenderer.render(canvas.getGraphicsContext2D(), worldDao.getGrid(),
-                    HexRenderer.RenderOptions.defaults());
+                    HexRenderer.RenderOptions.withAgents(agents));
         }
     }
 

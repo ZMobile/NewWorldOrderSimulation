@@ -125,9 +125,18 @@ public class SimulationConfig {
             config.apiKey = (String) llm.getOrDefault("apiKey", config.apiKey);
             config.apiBaseUrl = (String) llm.getOrDefault("apiBaseUrl", config.apiBaseUrl);
             // Fallback to environment variable
-            if (config.apiKey.isEmpty()) {
+            if (config.apiKey == null || config.apiKey.isEmpty()) {
                 String envKey = System.getenv("ANTHROPIC_API_KEY");
-                if (envKey != null && !envKey.isEmpty()) config.apiKey = envKey;
+                if (envKey != null && !envKey.isEmpty()) {
+                    config.apiKey = envKey;
+                    System.out.println("API key loaded from ANTHROPIC_API_KEY environment variable.");
+                } else {
+                    System.out.println("WARNING: No API key found. LLM features will use deterministic fallback.");
+                    System.out.println("  Set via: $env:ANTHROPIC_API_KEY = \"your-key\" (PowerShell)");
+                    System.out.println("  Or enter it in the launcher UI's API Key field.");
+                }
+            } else {
+                System.out.println("API key loaded from config file.");
             }
 
             Map<String, Object> sim = (Map<String, Object>) root.getOrDefault("simulation", Map.of());

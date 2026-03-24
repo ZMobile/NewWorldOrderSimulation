@@ -1,8 +1,14 @@
 package com.measim.ui.fx;
 
+import com.measim.model.agent.Agent;
+import com.measim.model.agent.Archetype;
 import com.measim.model.world.*;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Renders hex tiles to a JavaFX Canvas using flat-top hexagons.
@@ -53,6 +59,33 @@ public class HexRenderer {
                 gc.setStroke(Color.GOLD);
                 gc.setLineWidth(1.5);
                 strokeHex(gc, px, py, HEX_SIZE * 0.85);
+            }
+        }
+
+        // Agent layer (if agents provided)
+        if (options.agents() != null && options.showAgents()) {
+            // Count agents per tile for density rendering
+            Map<HexCoord, Integer> agentCounts = new HashMap<>();
+            for (Agent agent : options.agents()) {
+                agentCounts.merge(agent.state().location(), 1, Integer::sum);
+            }
+            for (var entry : agentCounts.entrySet()) {
+                HexCoord coord = entry.getKey();
+                int count = entry.getValue();
+                if (!grid.inBounds(coord)) continue;
+                double px = coord.toPixelX(HEX_SIZE);
+                double py = coord.toPixelY(HEX_SIZE);
+
+                // Size based on agent count
+                double dotSize = Math.min(HEX_SIZE * 0.8, 3 + count * 0.5);
+                gc.setFill(Color.rgb(255, 100, 50, 0.8));
+                gc.fillOval(px - dotSize / 2, py - dotSize / 2, dotSize, dotSize);
+
+                // Show count if multiple agents
+                if (count > 1) {
+                    gc.setFill(Color.WHITE);
+                    gc.fillText(String.valueOf(count), px - 3, py + 3);
+                }
             }
         }
 
@@ -127,9 +160,13 @@ public class HexRenderer {
     }
 
     public record RenderOptions(boolean showEnvironment, boolean showResources,
-                                boolean showAgents, boolean showStructures) {
+                                boolean showAgents, boolean showStructures,
+                                List<Agent> agents) {
         public static RenderOptions defaults() {
-            return new RenderOptions(true, true, true, true);
+            return new RenderOptions(true, true, true, true, null);
+        }
+        public static RenderOptions withAgents(List<Agent> agents) {
+            return new RenderOptions(true, true, true, true, agents);
         }
     }
 }

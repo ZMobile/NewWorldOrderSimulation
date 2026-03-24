@@ -42,6 +42,7 @@ public class SimulationServiceImpl implements SimulationService {
     private final Set<TickPhase> phases;
     private int currentTick = 0;
     private boolean initialized = false;
+    private boolean hasRun = false;
 
     @Inject
     public SimulationServiceImpl(SimulationConfig config, EventBus eventBus,
@@ -115,6 +116,8 @@ public class SimulationServiceImpl implements SimulationService {
 
     @Override
     public void run() {
+        if (hasRun) return;
+        hasRun = true;
         initialize();
         int totalTicks = config.totalTicks();
         List<TickPhase> orderedPhases = phases.stream()
