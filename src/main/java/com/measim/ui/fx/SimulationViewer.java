@@ -124,12 +124,25 @@ public class SimulationViewer extends Application {
         Scene scene = new Scene(root, 1500, 900);
         primaryStage.setTitle("MeaSim — New World Order Simulation");
         primaryStage.setScene(scene);
-        primaryStage.setOnCloseRequest(e -> liveConsolePanel.restoreStdout());
         primaryStage.show();
 
         redraw();
         if (metricsDao != null) dashboardPanel.update(metricsDao.getHistory());
         updateComms();
+
+        // Auto-refresh every 5 seconds while simulation runs in background
+        javafx.animation.Timeline refreshTimer = new javafx.animation.Timeline(
+                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(5), e -> {
+                    redraw();
+                    if (metricsDao != null) dashboardPanel.update(metricsDao.getHistory());
+                    updateComms();
+                }));
+        refreshTimer.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        refreshTimer.play();
+        primaryStage.setOnCloseRequest(ev -> {
+            refreshTimer.stop();
+            liveConsolePanel.restoreStdout();
+        });
     }
 
     private void redraw() {
