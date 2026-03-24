@@ -158,7 +158,19 @@ public class ActionExecutionPhase implements TickPhase {
             }
         }
 
-        // Phase B.5: Process trade offers (expire old, clean up)
+        // Phase B.5: Interaction rounds — agents respond to messages, offers, negotiate
+        // This allows see → message → negotiate → offer → accept within one tick
+        decisionPhase.runInteractionRounds(currentTick, 4);
+
+        // Execute interaction actions (messages, trades, contracts from conversation rounds)
+        for (var entry : decisionPhase.interactionActions()) {
+            Agent interactionAgent = agentDao.getAgent(entry.getKey());
+            if (interactionAgent != null && !incapacitatedAgents.contains(entry.getKey())) {
+                executeStrategicAction(interactionAgent, entry.getValue(), market, currentTick);
+            }
+        }
+
+        // Phase B.6: Process trade offers (expire old, clean up)
         tradeService.processTrades(currentTick);
 
         // Phase C: Novel actions — periodic GM interaction for non-incapacitated agents.

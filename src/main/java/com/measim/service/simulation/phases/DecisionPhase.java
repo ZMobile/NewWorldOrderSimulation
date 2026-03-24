@@ -148,6 +148,97 @@ public class DecisionPhase implements TickPhase {
 
     public Map<String, AgentAction> pendingActions() { return Collections.unmodifiableMap(pendingActions); }
 
+    // Interaction actions collected across micro-rounds (messages, trades, contracts)
+    private final List<Map.Entry<String, AgentAction>> interactionActions =
+            java.util.Collections.synchronizedList(new ArrayList<>());
+
+    public List<Map.Entry<String, AgentAction>> interactionActions() {
+        return Collections.unmodifiableList(interactionActions);
+    }
+
+    /**
+     * Run micro-rounds of agent interaction within this tick.
+     * Agents who received messages, trade offers, or job offers get follow-up LLM calls.
+     * Up to maxRounds rounds. Only communication/negotiation actions in rounds 2+.
+     */
+    public void runInteractionRounds(int currentTick, int maxRounds) {
+        if (!llmService.isAvailable()) return;
+        interactionActions.clear();
+
+        for (int round = 0; round < maxRounds; round++) {
+            // Find agents who have something new to respond to
+            List<Agent> responders = agentDao.getAllAgents().stream()
+                    .filter(a -> hasNewInput(a, currentTick))
+                    .toList();
+
+            if (responders.isEmpty()) {
+                if (round > 0) System.out.printf("    [Interaction] Round %d: no agents need to respond. Done.%n", round + 1);
+                break;
+            }
+
+            System.out.printf("    [Interaction] Round %d: %d agents responding...%n", round + 1, responders.size());
+            System.out.flush();
+
+            var futures = responders.stream()
+                    .map(agent -> {
+                        String spatial = buildSpatialContext(agent, currentTick);
+                        String context = "You received new messages or offers. Respond to them. " +
+                                "You can: SEND_MESSAGE, BROADCAST, OFFER_TRADE, ACCEPT_TRADE, REJECT_TRADE, " +
+                                "OFFER_JOB, ACCEPT_JOB, ACCEPT_CONTRACT, or IDLE if nothing needs a response.";
+
+                        var incoming = tradeService.getIncomingOffers(agent.id());
+                        var visible = tradeService.getVisibleOpenOffers(agent.id());
+                        StringBuilder tradeSb = new StringBuilder();
+                        if (!incoming.isEmpty()) {
+                            tradeSb.append("Pending offers for you:\n");
+                            for (var o : incoming) tradeSb.append("  ").append(o.id()).append(": ").append(o.summary()).append("\n");
+                        }
+                        if (!visible.isEmpty()) {
+                            tradeSb.append("Open offers nearby:\n");
+                            for (var o : visible) tradeSb.append("  ").append(o.id()).append(": ").append(o.summary()).append("\n");
+                        }
+                        String tradeCtx = tradeSb.isEmpty() ? "None" : tradeSb.toString();
+
+                        return Map.entry(agent.id(),
+                                llmService.escalateDecision(agent, spatial, context, currentTick, tradeCtx));
+                    })
+                    .toList();
+
+            CompletableFuture.allOf(futures.stream()
+                    .map(Map.Entry::getValue)
+                    .toArray(CompletableFuture[]::new)).join();
+
+            int actions = 0;
+            for (var entry : futures) {
+                AgentAction action = entry.getValue().join();
+                if (!(action instanceof AgentAction.Idle)) {
+                    interactionActions.add(Map.entry(entry.getKey(), action));
+                    actions++;
+                }
+            }
+            System.out.printf("    [Interaction] Round %d: %d actions produced%n", round + 1, actions);
+            System.out.flush();
+
+            if (actions == 0) break; // no one did anything, stop
+        }
+    }
+
+    /**
+     * Does this agent have new messages or offers to respond to?
+     */
+    private boolean hasNewInput(Agent agent, int currentTick) {
+        // Check for pending trade offers
+        if (!tradeService.getIncomingOffers(agent.id()).isEmpty()) return true;
+
+        // Check for recent messages (this tick) directed at them
+        return communicationDao.getAllMessages().stream()
+                .anyMatch(m -> m.tick() == currentTick
+                        && !m.senderId().equals(agent.id())
+                        && (m.receiverId().equals(agent.id()) || "ALL_AT_TILE".equals(m.receiverId()))
+                        && (m.channel() == com.measim.model.communication.Message.Channel.AGENT_TO_AGENT
+                            || m.channel() == com.measim.model.communication.Message.Channel.BROADCAST));
+    }
+
     /**
      * Should this agent's decision be escalated to LLM this tick?
      * Not every agent every tick — that would be too expensive.
