@@ -5,6 +5,8 @@ import com.measim.model.agent.*;
 import com.measim.model.config.SimulationConfig;
 import com.measim.model.economy.*;
 import com.measim.model.risk.PerceivedRisk;
+import com.measim.model.service.AgentServiceType;
+import com.measim.model.service.ServiceInstance;
 import com.measim.model.world.*;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -18,16 +20,18 @@ public class AgentDecisionServiceImpl implements AgentDecisionService {
     private final ProductionChainDao chainDao;
     private final InfrastructureDao infraDao;
     private final RiskDao riskDao;
+    private final ServiceDao serviceDao;
     private final SimulationConfig config;
 
     @Inject
     public AgentDecisionServiceImpl(WorldDao worldDao, ProductionChainDao chainDao,
                                      InfrastructureDao infraDao, RiskDao riskDao,
-                                     SimulationConfig config) {
+                                     ServiceDao serviceDao, SimulationConfig config) {
         this.worldDao = worldDao;
         this.chainDao = chainDao;
         this.infraDao = infraDao;
         this.riskDao = riskDao;
+        this.serviceDao = serviceDao;
         this.config = config;
     }
 
@@ -153,6 +157,28 @@ public class AgentDecisionServiceImpl implements AgentDecisionService {
             candidates.add(new ScoredAction(
                     new AgentAction.ContributeCommons("public goods", state.credits() * 0.05),
                     profile.altruism() * 20));
+        }
+
+        // Consume available services (strategic choice — agent picks the best one)
+        if (state.credits() > 30) {
+            var nearbyServices = serviceDao.getInstancesNear(state.location(), 10);
+            for (ServiceInstance svc : nearbyServices) {
+                if (!svc.isActive() || !svc.hasCapacity()) continue;
+                if (state.credits() < svc.type().pricePerUse()) continue;
+
+                double serviceUtility = switch (svc.type().category()) {
+                    case HEALTHCARE -> state.satisfaction() < 0.4 ? 30 : 5;
+                    case EDUCATION -> profile.creativity() * 15;
+                    case FINANCIAL -> profile.ambition() > 0.6 ? 20 : 5;
+                    case ENTERTAINMENT -> state.satisfaction() < 0.6 ? 15 : 3;
+                    case MAINTENANCE -> 10;
+                    default -> 5;
+                } * svc.effectiveQuality();
+
+                candidates.add(new ScoredAction(
+                        new AgentAction.ConsumeService(svc.id()), serviceUtility));
+                break; // consider one service per tick
+            }
         }
 
         return candidates.stream().max(Comparator.comparingDouble(ScoredAction::utility))

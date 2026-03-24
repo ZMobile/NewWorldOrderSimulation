@@ -8,9 +8,11 @@ import com.measim.model.gamemaster.NovelAction;
 import com.measim.model.world.*;
 import com.measim.model.service.ServiceProposal;
 import com.measim.service.agentservice.AgentServiceManager;
+import com.measim.service.contract.ContractService;
 import com.measim.service.economy.ProductionService;
 import com.measim.service.gamemaster.GameMasterService;
 import com.measim.service.infrastructure.InfrastructureService;
+import com.measim.service.property.PropertyService;
 import com.measim.service.simulation.TickPhase;
 import com.measim.service.world.EnvironmentService;
 import jakarta.inject.Inject;
@@ -47,6 +49,8 @@ public class ActionExecutionPhase implements TickPhase {
     private final GameMasterService gameMasterService;
     private final InfrastructureService infrastructureService;
     private final AgentServiceManager agentServiceManager;
+    private final PropertyService propertyService;
+    private final ContractService contractService;
     private final SimulationConfig config;
 
     @Inject
@@ -54,7 +58,8 @@ public class ActionExecutionPhase implements TickPhase {
                                  MarketDao marketDao, ProductionChainDao chainDao,
                                  ProductionService productionService, EnvironmentService environmentService,
                                  GameMasterService gameMasterService, InfrastructureService infrastructureService,
-                                 AgentServiceManager agentServiceManager, SimulationConfig config) {
+                                 AgentServiceManager agentServiceManager, PropertyService propertyService,
+                                 ContractService contractService, SimulationConfig config) {
         this.decisionPhase = decisionPhase;
         this.agentDao = agentDao;
         this.worldDao = worldDao;
@@ -65,6 +70,8 @@ public class ActionExecutionPhase implements TickPhase {
         this.gameMasterService = gameMasterService;
         this.infrastructureService = infrastructureService;
         this.agentServiceManager = agentServiceManager;
+        this.propertyService = propertyService;
+        this.contractService = contractService;
         this.config = config;
     }
 
@@ -95,13 +102,16 @@ public class ActionExecutionPhase implements TickPhase {
             // Step 5: BUY — place buy orders for food and production inputs.
             autoBuy(agent, market, currentTick);
 
-            // Step 6: STRATEGIC ACTION — the one deliberate choice per tick.
+            // Step 6: LABOR MARKET — business owners hire, workers seek work
+            autoLaborMarket(agent, currentTick);
+
+            // Step 7: STRATEGIC ACTION — the one deliberate choice per tick.
             AgentAction action = decisionPhase.pendingActions().get(agent.id());
             if (action != null) {
                 executeStrategicAction(agent, action, market, currentTick);
             }
 
-            // Step 7: NOVEL ACTIONS — periodic GM interaction for all archetypes.
+            // Step 8: NOVEL ACTIONS — periodic GM interaction for all archetypes.
             if (currentTick % 6 == 0 && shouldTriggerNovelAction(agent, currentTick)) {
                 double stake = Math.min(agent.state().credits() * 0.03, 200);
                 if (stake > 10) {
@@ -307,6 +317,55 @@ public class ActionExecutionPhase implements TickPhase {
         };
     }
 
+    // ====== LABOR MARKET ======
+
+    private void autoLaborMarket(Agent agent, int currentTick) {
+        var profile = agent.identity();
+        var state = agent.state();
+
+        // Business owners (those with infrastructure or high credits) try to hire
+        boolean isBusinessOwner = state.employmentStatus() == EmploymentStatus.BUSINESS_OWNER
+                || state.ownedRobots() > 0 || state.credits() > 2000;
+
+        if (isBusinessOwner && profile.ambition() > 0.4) {
+            // Check if we already have enough workers
+            var existingWorkers = contractService.getWorkRelationsOf(agent.id());
+            int currentWorkers = existingWorkers.size();
+
+            // Hire if we have fewer workers than robots (need someone to manage them)
+            // or if we have productive infrastructure
+            if (currentWorkers < Math.max(1, state.ownedRobots())) {
+                // Find unemployed agents nearby
+                for (Agent candidate : agentDao.getAllAgents()) {
+                    if (candidate.id().equals(agent.id())) continue;
+                    if (candidate.state().employmentStatus() != EmploymentStatus.UNEMPLOYED) continue;
+                    if (candidate.state().location().distanceTo(state.location()) > 10) continue;
+
+                    // Offer wages based on what we can afford
+                    double wages = Math.min(state.credits() * 0.02, 20);
+                    if (wages < 3) break; // can't afford workers
+
+                    contractService.createContract(
+                            com.measim.model.contract.Contract.ContractType.WORK_RELATION,
+                            agent.id(), candidate.id(), wages, 12, currentTick,
+                            java.util.Map.of("hoursPerTick", 1.0, "laborWeight", 1.0));
+
+                    agent.addMemory(new MemoryEntry(currentTick, "CONTRACT",
+                            "Hired " + candidate.name() + " at " + String.format("%.1f", wages) + "/tick",
+                            0.6, candidate.id(), 0));
+                    break; // one hire per tick
+                }
+            }
+        }
+
+        // Workers without employment actively seek work
+        if (state.employmentStatus() == EmploymentStatus.UNEMPLOYED
+                && (profile.archetype() == Archetype.WORKER || profile.ambition() > 0.3)) {
+            // Worker archetype is actively looking — this is handled by the hiring loop above
+            // But we can make them move toward employment opportunities
+        }
+    }
+
     // ====== STRATEGIC ACTION ======
 
     private void executeStrategicAction(Agent agent, AgentAction action,
@@ -348,25 +407,42 @@ public class ActionExecutionPhase implements TickPhase {
                 }
             }
             case AgentAction.BuildInfrastructure buildInfra -> {
-                // Agent proposes infrastructure → GM evaluates → if approved, build it
-                var proposal = new com.measim.model.gamemaster.InfrastructureProposal(
-                        agent.id(), buildInfra.typeId(), // typeId used as proposed name here
-                        "Agent-proposed infrastructure",
-                        "Available local materials",
-                        buildInfra.location(), buildInfra.connectTo(),
-                        "Transport resources from connected tile",
-                        Math.min(agent.state().credits() * 0.3, 1000));
+                // Must own a property claim on the tile to build
+                var loc = buildInfra.location() != null ? buildInfra.location() : agent.state().location();
+                var existingClaims = propertyService.getAgentProperties(agent.id());
+                boolean hasClaim = existingClaims.stream().anyMatch(c -> c.tile().equals(loc));
 
-                var typeOpt = gameMasterService.evaluateInfrastructureProposal(proposal, currentTick);
-                if (typeOpt.isPresent()) {
-                    var result = infrastructureService.build(agent.id(), typeOpt.get().id(),
-                            buildInfra.location(), buildInfra.connectTo(), currentTick);
-                    if (result.success()) {
-                        agent.state().addExperience("infrastructure");
-                        agent.state().recordSuccess("infrastructure");
+                if (!hasClaim) {
+                    // Auto-purchase a claim if affordable
+                    var claimOpt = propertyService.purchaseClaim(agent.id(), loc, 1, currentTick);
+                    hasClaim = claimOpt.isPresent();
+                    if (claimOpt.isPresent()) {
                         agent.addMemory(new MemoryEntry(currentTick, "ACTION",
-                                "Built " + result.infrastructure().type().name(),
-                                0.8, null, -result.infrastructure().type().constructionCost()));
+                                "Purchased property claim at " + loc, 0.4, null,
+                                -propertyService.getClaimBasePrice(loc)));
+                    }
+                }
+
+                if (hasClaim) {
+                    var proposal = new com.measim.model.gamemaster.InfrastructureProposal(
+                            agent.id(), buildInfra.typeId(),
+                            "Agent-proposed infrastructure",
+                            "Available local materials",
+                            loc, buildInfra.connectTo(),
+                            "Transport resources from connected tile",
+                            Math.min(agent.state().credits() * 0.3, 1000));
+
+                    var typeOpt = gameMasterService.evaluateInfrastructureProposal(proposal, currentTick);
+                    if (typeOpt.isPresent()) {
+                        var result = infrastructureService.build(agent.id(), typeOpt.get().id(),
+                                loc, buildInfra.connectTo(), currentTick);
+                        if (result.success()) {
+                            agent.state().addExperience("infrastructure");
+                            agent.state().recordSuccess("infrastructure");
+                            agent.addMemory(new MemoryEntry(currentTick, "ACTION",
+                                    "Built " + result.infrastructure().type().name(),
+                                    0.8, null, -result.infrastructure().type().constructionCost()));
+                        }
                     }
                 }
             }
