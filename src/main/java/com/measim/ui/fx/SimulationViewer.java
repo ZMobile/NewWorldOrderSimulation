@@ -11,16 +11,11 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 
-/**
- * JavaFX application for visualizing MeaSim.
- * This is a standalone viewer — the simulation runs headless and this reads state.
- */
 public class SimulationViewer extends Application {
 
-    // These must be set before launch() is called
     private static WorldDao worldDao;
     private static AgentDao agentDao;
     private static MetricsDao metricsDao;
@@ -45,8 +40,17 @@ public class SimulationViewer extends Application {
         canvas = new Canvas(800, 600);
         Label statusBar = new Label("Click a tile to inspect. Scroll to zoom. Drag to pan.");
 
+        // Resizable canvas wrapper — canvas stretches to fill available space
+        Pane canvasHolder = new Pane(canvas);
+        canvas.widthProperty().bind(canvasHolder.widthProperty());
+        canvas.heightProperty().bind(canvasHolder.heightProperty());
+
+        // Redraw when canvas resizes
+        canvas.widthProperty().addListener((obs, oldVal, newVal) -> redraw());
+        canvas.heightProperty().addListener((obs, oldVal, newVal) -> redraw());
+
         BorderPane root = new BorderPane();
-        root.setCenter(canvas);
+        root.setCenter(canvasHolder);
         root.setRight(inspectorPanel);
         root.setLeft(dashboardPanel);
         root.setBottom(statusBar);
@@ -57,7 +61,6 @@ public class SimulationViewer extends Application {
             if (worldDao != null) {
                 Tile tile = worldDao.getTile(coord);
                 inspectorPanel.showTile(tile);
-                // Check for agents at this tile
                 if (agentDao != null) {
                     for (Agent agent : agentDao.getAllAgents()) {
                         if (agent.state().location().equals(coord)) {
@@ -85,7 +88,7 @@ public class SimulationViewer extends Application {
         });
 
         Scene scene = new Scene(root, 1400, 800);
-        primaryStage.setTitle("MeaSim Viewer");
+        primaryStage.setTitle("MeaSim — New World Order Simulation");
         primaryStage.setScene(scene);
         primaryStage.show();
 
