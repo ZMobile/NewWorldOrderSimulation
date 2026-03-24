@@ -467,7 +467,7 @@ All core systems built, wired, and compiling:
 - **LLM Integration**: Claude API, two-tier decisions (deterministic + LLM escalation), concurrent batching, retry logic (3 retries with backoff), cost tracking
 - **Game Master**: Full DM — research, infrastructure evaluation (agent proposes/GM evaluates), novel actions for all archetypes, free-form action resolution, spontaneous world events, tile-specific coherence corrections. Multi-turn conversations with information boundaries. All reasoning observable.
 - **Model Tiering**: Sonnet 4.6 for routine operations, Opus 4.6 for coherence audits and world events
-- **Infrastructure**: GM-dynamic types (no fixed catalog), resource flow across tiles, maintenance/degradation, terrain capacity, stacking diminishing returns. Requires property claim to build.
+- **Infrastructure**: GM-dynamic types, resource flow, maintenance/degradation, construction time. **Private** (farms, mines, factories) requires property claim. **Public** (roads, trails) requires governance approval, no property needed. Reserve robots available at premium for construction labor.
 - **Risk System**: Universal (all entity types), evolution model (age/usage/maintenance/environment/neighbors), true vs perceived risk, cascading effects
 - **Externalities**: Universal byproduct system with true/measured/perceived pollution layers. Hidden externalities go undetected until consequences emerge. Processed every tick, feeds into EF scoring.
 - **Services**: Agent-created (banking, logistics, insurance, education, etc.), GM evaluates proposals. Competitive market with reputation. Agents strategically choose which services to consume.

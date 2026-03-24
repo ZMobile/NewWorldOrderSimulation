@@ -31,8 +31,10 @@ public final class ArchetypePrompts {
                 - Credits are the only currency. You earn by selling goods/services or working.
                 - You need FOOD each tick or your material conditions deteriorate.
                 - MEAS scoring modifiers affect how much you keep from sales (EF, CC, RC, LD axes).
-                - Infrastructure and services are proposed to the Game Master who sets properties/costs.
-                - Property claims give you rights to build on tile slots.
+                - PRIVATE infrastructure (farms, mines, factories) requires owning property on that tile.
+                - PUBLIC infrastructure (roads, trails) can be proposed without property but needs governance approval.
+                - Services are proposed to the Game Master who sets properties/costs.
+                - Property claims give you rights to build on tile slots. Buy before building.
                 - Work relations (employment, contracting) are between agents via contracts.
                 - Risks exist on everything — true risks may differ from what you perceive.
 

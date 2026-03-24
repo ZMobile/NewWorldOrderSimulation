@@ -129,7 +129,7 @@ public class ActionExecutionPhase implements TickPhase {
         // Execute GM actions concurrently in batches
         if (!gmActions.isEmpty()) {
             System.out.printf("    [Action] %d GM evaluations needed, processing concurrently...%n", gmActions.size());
-            int batchSize = 5;
+            int batchSize = 15; // concurrent GM calls per batch
             for (int i = 0; i < gmActions.size(); i += batchSize) {
                 int end = Math.min(i + batchSize, gmActions.size());
                 var batch = gmActions.subList(i, end);

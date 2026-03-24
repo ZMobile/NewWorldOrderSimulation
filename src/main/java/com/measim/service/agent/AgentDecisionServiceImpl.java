@@ -21,17 +21,21 @@ public class AgentDecisionServiceImpl implements AgentDecisionService {
     private final InfrastructureDao infraDao;
     private final RiskDao riskDao;
     private final ServiceDao serviceDao;
+    private final com.measim.service.property.PropertyService propertyService;
     private final SimulationConfig config;
 
     @Inject
     public AgentDecisionServiceImpl(WorldDao worldDao, ProductionChainDao chainDao,
                                      InfrastructureDao infraDao, RiskDao riskDao,
-                                     ServiceDao serviceDao, SimulationConfig config) {
+                                     ServiceDao serviceDao,
+                                     com.measim.service.property.PropertyService propertyService,
+                                     SimulationConfig config) {
         this.worldDao = worldDao;
         this.chainDao = chainDao;
         this.infraDao = infraDao;
         this.riskDao = riskDao;
         this.serviceDao = serviceDao;
+        this.propertyService = propertyService;
         this.config = config;
     }
 
@@ -102,34 +106,59 @@ public class AgentDecisionServiceImpl implements AgentDecisionService {
             }
         }
 
-        // Build infrastructure (agents propose, GM evaluates)
-        // Agent describes what they WANT — the GM determines if it's feasible and sets properties
-        if (profile.ambition() > 0.4 && state.credits() > 400) {
+        // Infrastructure proposals:
+        // PUBLIC (roads, trails, bridges between tiles): no property needed, GM approves as public works
+        // PRIVATE (farms, mines, factories): REQUIRES owning property on that tile
+        if (profile.ambition() > 0.4 && state.credits() > 300) {
             Tile current = worldDao.getTile(state.location());
             if (current != null) {
-                // Look for resource-rich tiles nearby that could be connected
-                for (Tile nearby : worldDao.getTilesInRange(state.location(), 6)) {
-                    if (!nearby.resources().isEmpty() && !nearby.coord().equals(state.location())) {
-                        boolean alreadyConnected = infraDao.getConnectionsTo(state.location()).stream()
-                                .anyMatch(i -> nearby.coord().equals(i.connectedTo()));
-                        if (!alreadyConnected && state.credits() > 300) {
-                            String proposedName = "Transport route to " + nearby.coord();
-                            double infraUtility = nearby.resources().size() * 15.0 + profile.ambition() * 10;
-                            infraUtility *= riskDiscount(agent, nearby.coord().toString());
-                            candidates.add(new ScoredAction(
-                                    new AgentAction.BuildInfrastructure(proposedName, state.location(), nearby.coord()),
-                                    infraUtility));
-                            break; // one infrastructure proposal per tick
+                var ownedClaims = propertyService.getAgentProperties(agent.id());
+                boolean ownsCurrentTile = ownedClaims.stream()
+                        .anyMatch(c -> c.tile().equals(state.location()));
+
+                // PUBLIC: trails/roads between tiles (no property needed, lower utility = less common)
+                if (current.isSettlementZone() && profile.altruism() > 0.3) {
+                    for (Tile nearby : worldDao.getTilesInRange(state.location(), 8)) {
+                        if (nearby.isSettlementZone() && !nearby.coord().equals(state.location())) {
+                            boolean alreadyConnected = infraDao.getConnectionsTo(state.location()).stream()
+                                    .anyMatch(i -> nearby.coord().equals(i.connectedTo()));
+                            if (!alreadyConnected && state.credits() > 200) {
+                                candidates.add(new ScoredAction(
+                                        new AgentAction.BuildInfrastructure(
+                                                "Public trail to settlement " + nearby.coord(),
+                                                state.location(), nearby.coord()),
+                                        profile.altruism() * 10 + 5));
+                                break;
+                            }
                         }
                     }
                 }
 
-                // Local improvements (mining, production facility)
-                if (infraDao.getAtTile(state.location()).isEmpty() && !current.resources().isEmpty()
-                        && state.credits() > 400) {
-                    candidates.add(new ScoredAction(
-                            new AgentAction.BuildInfrastructure("Extraction facility", state.location(), null),
-                            profile.ambition() * 15));
+                // PRIVATE: requires property ownership on the tile
+                if (ownsCurrentTile && state.credits() > 400) {
+                    // Connect to resource tiles
+                    for (Tile nearby : worldDao.getTilesInRange(state.location(), 6)) {
+                        if (!nearby.resources().isEmpty() && !nearby.coord().equals(state.location())) {
+                            boolean alreadyConnected = infraDao.getConnectionsTo(state.location()).stream()
+                                    .anyMatch(i -> nearby.coord().equals(i.connectedTo()));
+                            if (!alreadyConnected) {
+                                candidates.add(new ScoredAction(
+                                        new AgentAction.BuildInfrastructure(
+                                                "Private pipeline to " + nearby.coord(),
+                                                state.location(), nearby.coord()),
+                                        nearby.resources().size() * 15.0 + profile.ambition() * 10));
+                                break;
+                            }
+                        }
+                    }
+
+                    // Local facility
+                    if (infraDao.getAtTile(state.location()).isEmpty() && !current.resources().isEmpty()) {
+                        candidates.add(new ScoredAction(
+                                new AgentAction.BuildInfrastructure("Private extraction facility",
+                                        state.location(), null),
+                                profile.ambition() * 15));
+                    }
                 }
             }
         }
