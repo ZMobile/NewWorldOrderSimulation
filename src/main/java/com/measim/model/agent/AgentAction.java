@@ -47,4 +47,20 @@ public sealed interface AgentAction {
 
     /** Broadcast a message to all agents at the current tile/gathering point. */
     record BroadcastMessage(String content) implements AgentAction {}
+
+    /** Offer a job/work contract to a specific agent. */
+    record OfferJob(String targetAgentId, double wagesPerTick, int durationTicks, String description) implements AgentAction {}
+
+    /** Accept a pending job offer. */
+    record AcceptJob(String offererAgentId) implements AgentAction {}
+
+    /** Propose a general contract (rental, partnership, service agreement). */
+    record ProposeContract(String targetAgentId, String contractType, double valuePerTick,
+                           int durationTicks, String terms) implements AgentAction {}
+
+    /** Accept a pending contract proposal. */
+    record AcceptContract(String proposerAgentId, String contractType) implements AgentAction {}
+
+    /** Terminate an existing contract (quit job, end partnership, cancel agreement). */
+    record TerminateContract(String contractId, String reason) implements AgentAction {}
 }

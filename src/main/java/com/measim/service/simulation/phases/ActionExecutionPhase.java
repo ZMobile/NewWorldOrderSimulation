@@ -101,16 +101,14 @@ public class ActionExecutionPhase implements TickPhase {
             boolean incapacitated = subsistenceHelper.processNeeds(agent, currentTick);
             if (incapacitated) {
                 incapacitatedAgents.add(agent.id());
-                // Incapacitated: can only extract and buy food (survival mode)
+                // Incapacitated: can only extract (survival mode)
                 autoExtract(agent);
-                autoBuy(agent, market, currentTick);
                 continue;
             }
             autoExtract(agent);
             autoProduce(agent, currentTick);
-            autoSell(agent, market, currentTick);
-            autoBuy(agent, market, currentTick);
-            autoLaborMarket(agent, currentTick);
+            // No autoSell/autoBuy/autoLaborMarket — all inter-agent commerce is LLM-only.
+            // Agents must negotiate trades, sales, purchases, and hiring themselves.
         }
 
         // Phase B: Collect all strategic actions that need GM evaluation
@@ -263,142 +261,8 @@ public class ActionExecutionPhase implements TickPhase {
         }
     }
 
-    // ====== SELLING (offer goods for credits) ======
-
-    private void autoSell(Agent agent, MarketDao.MarketData market, int currentTick) {
-        // Sell finished products — these are what consumers need
-        for (ProductType productType : ProductType.values()) {
-            ItemType item = ItemType.of(productType);
-            int count = agent.state().getInventoryCount(item);
-            int keepForSelf = (productType == ProductType.FOOD) ? 3 : 0; // keep some food
-            if (count > keepForSelf) {
-                int toSell = count - keepForSelf;
-                agent.state().removeFromInventory(item, toSell);
-                double askPrice = productBasePrice(productType);
-                market.submitOrder(new Order(agent.id(), item, toSell, askPrice,
-                        Order.OrderSide.SELL, currentTick));
-            }
-        }
-
-        // Sell excess raw resources (keep some for own production)
-        for (ResourceType resourceType : ResourceType.values()) {
-            ItemType item = ItemType.of(resourceType);
-            int count = agent.state().getInventoryCount(item);
-            if (count > 5) {
-                int toSell = count - 5;
-                agent.state().removeFromInventory(item, toSell);
-                market.submitOrder(new Order(agent.id(), item, toSell, 2.0,
-                        Order.OrderSide.SELL, currentTick));
-            }
-        }
-    }
-
-    // ====== BUYING (spend credits for goods you need) ======
-
-    private void autoBuy(Agent agent, MarketDao.MarketData market, int currentTick) {
-        AgentState state = agent.state();
-
-        // Priority 1: Buy FOOD if running low (everyone needs to eat)
-        ItemType food = ItemType.of(ProductType.FOOD);
-        if (state.getInventoryCount(food) < 3 && state.credits() > 5) {
-            int need = 3 - state.getInventoryCount(food);
-            market.submitOrder(new Order(agent.id(), food, need,
-                    productBasePrice(ProductType.FOOD) * 1.3, // willing to pay premium
-                    Order.OrderSide.BUY, currentTick));
-        }
-
-        // Priority 2: Buy BASIC_GOODS for satisfaction
-        ItemType goods = ItemType.of(ProductType.BASIC_GOODS);
-        if (state.getInventoryCount(goods) < 1 && state.credits() > 20) {
-            market.submitOrder(new Order(agent.id(), goods, 1,
-                    productBasePrice(ProductType.BASIC_GOODS) * 1.2,
-                    Order.OrderSide.BUY, currentTick));
-        }
-
-        // Priority 3: Buy MEDICINE if satisfaction is low
-        if (state.satisfaction() < 0.35 && state.credits() > 15) {
-            ItemType medicine = ItemType.of(ProductType.MEDICINE);
-            if (state.getInventoryCount(medicine) < 1) {
-                market.submitOrder(new Order(agent.id(), medicine, 1,
-                        productBasePrice(ProductType.MEDICINE) * 1.2,
-                        Order.OrderSide.BUY, currentTick));
-            }
-        }
-
-        // Priority 4: Buy raw resources for production chains
-        for (ProductionChain chain : chainDao.getAllDiscovered()) {
-            for (var input : chain.inputs().entrySet()) {
-                int have = state.getInventoryCount(input.getKey());
-                if (have < input.getValue() && state.credits() > 10) {
-                    int need = input.getValue() - have;
-                    market.submitOrder(new Order(agent.id(), input.getKey(), need, 3.0,
-                            Order.OrderSide.BUY, currentTick));
-                    return; // one buy order for production inputs per tick
-                }
-            }
-        }
-    }
-
-    private double productBasePrice(ProductType type) {
-        return switch (type) {
-            case FOOD -> 3.0;
-            case BASIC_GOODS -> 5.0;
-            case CONSTRUCTION -> 8.0;
-            case TECHNOLOGY -> 15.0;
-            case MEDICINE -> 12.0;
-            case LUXURY -> 25.0;
-        };
-    }
-
-    // ====== LABOR MARKET ======
-
-    private void autoLaborMarket(Agent agent, int currentTick) {
-        var profile = agent.identity();
-        var state = agent.state();
-
-        // Hire only when you have something that NEEDS workers:
-        // infrastructure to operate, services to staff, or robots to manage
-        boolean hasBusinessNeed = !propertyService.getAgentProperties(agent.id()).isEmpty()
-                || state.ownedRobots() > 0
-                || state.employmentStatus() == EmploymentStatus.BUSINESS_OWNER;
-
-        if (hasBusinessNeed && state.credits() > 200) {
-            var existingWorkers = contractService.getWorkRelationsOf(agent.id());
-            int currentWorkers = existingWorkers.size();
-
-            // Hire if: have infrastructure/robots but no workers yet
-            int workersNeeded = Math.max(1, state.ownedRobots()) - currentWorkers;
-            if (workersNeeded > 0) {
-                // Find unemployed agents nearby
-                for (Agent candidate : agentDao.getAllAgents()) {
-                    if (candidate.id().equals(agent.id())) continue;
-                    if (candidate.state().employmentStatus() != EmploymentStatus.UNEMPLOYED) continue;
-                    if (candidate.state().location().distanceTo(state.location()) > 10) continue;
-
-                    // Offer wages based on what we can afford
-                    double wages = Math.min(state.credits() * 0.02, 20);
-                    if (wages < 3) break; // can't afford workers
-
-                    contractService.createContract(
-                            com.measim.model.contract.Contract.ContractType.WORK_RELATION,
-                            agent.id(), candidate.id(), wages, 12, currentTick,
-                            java.util.Map.of("hoursPerTick", 1.0, "laborWeight", 1.0));
-
-                    agent.addMemory(new MemoryEntry(currentTick, "CONTRACT",
-                            "Hired " + candidate.name() + " at " + String.format("%.1f", wages) + "/tick",
-                            0.6, candidate.id(), 0));
-                    break; // one hire per tick
-                }
-            }
-        }
-
-        // Workers without employment actively seek work
-        if (state.employmentStatus() == EmploymentStatus.UNEMPLOYED
-                && (profile.archetype() == Archetype.WORKER || profile.ambition() > 0.3)) {
-            // Worker archetype is actively looking — this is handled by the hiring loop above
-            // But we can make them move toward employment opportunities
-        }
-    }
+    // autoSell, autoBuy, autoLaborMarket REMOVED — all inter-agent commerce is LLM-only.
+    // Agents negotiate trades, purchases, sales, and hiring through their archetype reasoning.
 
     // ====== STRATEGIC ACTION ======
 
@@ -546,6 +410,79 @@ public class ActionExecutionPhase implements TickPhase {
                 agent.addMemory(new MemoryEntry(currentTick, "BROADCAST",
                         "Said: " + broadcast.content().substring(0, Math.min(60, broadcast.content().length())),
                         0.3, null, 0));
+            }
+            case AgentAction.OfferJob offer -> {
+                var target = agentDao.getAgent(offer.targetAgentId());
+                if (target != null && commRange.canCommunicate(agent, target)) {
+                    String offerMsg = String.format("JOB_OFFER: %.1f credits/tick for %d ticks. %s",
+                            offer.wagesPerTick(), offer.durationTicks(), offer.description());
+                    commService.sendAgentMessage(agent.id(), offer.targetAgentId(),
+                            offerMsg, com.measim.model.communication.Message.MessageType.TRADE_PROPOSAL, currentTick);
+                    agent.addMemory(new MemoryEntry(currentTick, "JOB_OFFER",
+                            "Offered job to " + offer.targetAgentId() + " at " + String.format("%.1f", offer.wagesPerTick()) + "/tick",
+                            0.5, offer.targetAgentId(), 0));
+                }
+            }
+            case AgentAction.AcceptJob accept -> {
+                // Find the most recent job offer from this agent
+                var offerer = agentDao.getAgent(accept.offererAgentId());
+                if (offerer != null && commRange.canCommunicate(agent, offerer)) {
+                    // Look for matching offer in recent communications
+                    var recentOffers = agent.memory().getByType("JOB_OFFER_RECEIVED", 5);
+                    boolean hasOffer = agent.memory().getRecent(20).stream()
+                            .anyMatch(m -> m.description().contains("JOB_OFFER") && m.description().contains(accept.offererAgentId()));
+
+                    // Create the work contract — default terms if no specific offer found
+                    double wages = 5.0; // default
+                    int duration = 12;
+                    contractService.createContract(
+                            com.measim.model.contract.Contract.ContractType.WORK_RELATION,
+                            accept.offererAgentId(), agent.id(), wages, duration, currentTick,
+                            java.util.Map.of("hoursPerTick", 1.0, "laborWeight", 1.0));
+                    commService.sendAgentMessage(agent.id(), accept.offererAgentId(),
+                            "ACCEPTED your job offer.",
+                            com.measim.model.communication.Message.MessageType.TRADE_RESPONSE, currentTick);
+                    agent.addMemory(new MemoryEntry(currentTick, "CONTRACT",
+                            "Accepted job from " + accept.offererAgentId(), 0.6, accept.offererAgentId(), 0));
+                }
+            }
+            case AgentAction.ProposeContract proposal -> {
+                var target = agentDao.getAgent(proposal.targetAgentId());
+                if (target != null && commRange.canCommunicate(agent, target)) {
+                    String propMsg = String.format("CONTRACT_PROPOSAL: %s, %.1f credits/tick, %d ticks. Terms: %s",
+                            proposal.contractType(), proposal.valuePerTick(), proposal.durationTicks(), proposal.terms());
+                    commService.sendAgentMessage(agent.id(), proposal.targetAgentId(),
+                            propMsg, com.measim.model.communication.Message.MessageType.TRADE_PROPOSAL, currentTick);
+                    agent.addMemory(new MemoryEntry(currentTick, "CONTRACT_PROPOSAL",
+                            "Proposed " + proposal.contractType() + " to " + proposal.targetAgentId(),
+                            0.5, proposal.targetAgentId(), 0));
+                }
+            }
+            case AgentAction.AcceptContract accept -> {
+                var proposer = agentDao.getAgent(accept.proposerAgentId());
+                if (proposer != null && commRange.canCommunicate(agent, proposer)) {
+                    var type = switch (accept.contractType().toUpperCase()) {
+                        case "WORK_RELATION" -> com.measim.model.contract.Contract.ContractType.WORK_RELATION;
+                        case "RENTAL" -> com.measim.model.contract.Contract.ContractType.RENTAL;
+                        case "SERVICE" -> com.measim.model.contract.Contract.ContractType.SERVICE_SUBSCRIPTION;
+                        default -> com.measim.model.contract.Contract.ContractType.PARTNERSHIP;
+                    };
+                    contractService.createContract(type,
+                            accept.proposerAgentId(), agent.id(), 5.0, 12, currentTick,
+                            java.util.Map.of());
+                    commService.sendAgentMessage(agent.id(), accept.proposerAgentId(),
+                            "ACCEPTED your " + accept.contractType() + " proposal.",
+                            com.measim.model.communication.Message.MessageType.TRADE_RESPONSE, currentTick);
+                    agent.addMemory(new MemoryEntry(currentTick, "CONTRACT",
+                            "Accepted " + accept.contractType() + " from " + accept.proposerAgentId(),
+                            0.6, accept.proposerAgentId(), 0));
+                }
+            }
+            case AgentAction.TerminateContract terminate -> {
+                contractService.terminateContract(terminate.contractId(), agent.id(), currentTick);
+                agent.addMemory(new MemoryEntry(currentTick, "CONTRACT",
+                        "Terminated contract " + terminate.contractId() + ": " + terminate.reason(),
+                        0.5, null, 0));
             }
             case AgentAction.ExtractResource ignored -> {}
             case AgentAction.Produce ignored -> {}

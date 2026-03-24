@@ -89,6 +89,25 @@ public final class LlmResponseParser {
                         root.path("message").asText(""));
                 case "BROADCAST" -> new AgentAction.BroadcastMessage(
                         root.path("message").asText(""));
+                case "OFFER_JOB" -> new AgentAction.OfferJob(
+                        root.path("targetAgent").asText(),
+                        root.path("wagesPerTick").asDouble(5),
+                        root.path("durationTicks").asInt(12),
+                        root.path("description").asText("Work agreement"));
+                case "ACCEPT_JOB" -> new AgentAction.AcceptJob(
+                        root.path("offererAgent").asText());
+                case "PROPOSE_CONTRACT" -> new AgentAction.ProposeContract(
+                        root.path("targetAgent").asText(),
+                        root.path("contractType").asText("WORK_RELATION"),
+                        root.path("valuePerTick").asDouble(5),
+                        root.path("durationTicks").asInt(12),
+                        root.path("terms").asText(""));
+                case "ACCEPT_CONTRACT" -> new AgentAction.AcceptContract(
+                        root.path("proposerAgent").asText(),
+                        root.path("contractType").asText("WORK_RELATION"));
+                case "TERMINATE_CONTRACT" -> new AgentAction.TerminateContract(
+                        root.path("contractId").asText(),
+                        root.path("reason").asText(""));
                 default -> new AgentAction.Idle();
             };
         } catch (Exception e) {

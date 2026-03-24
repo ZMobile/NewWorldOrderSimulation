@@ -61,6 +61,11 @@ public final class ArchetypePrompts {
                 {"action": "REJECT_TRADE", "offerId": "trade_123"}
                 {"action": "SEND_MESSAGE", "targetAgent": "agent_42", "message": "Your message here"}
                 {"action": "BROADCAST", "message": "Message visible to all agents at this tile"}
+                {"action": "OFFER_JOB", "targetAgent": "agent_42", "wagesPerTick": 5.0, "durationTicks": 12, "description": "Work at my farm"}
+                {"action": "ACCEPT_JOB", "offererAgent": "agent_42"}
+                {"action": "PROPOSE_CONTRACT", "targetAgent": "agent_42", "contractType": "RENTAL|WORK_RELATION|SERVICE|PARTNERSHIP", "valuePerTick": 5.0, "durationTicks": 12, "terms": "description"}
+                {"action": "ACCEPT_CONTRACT", "proposerAgent": "agent_42", "contractType": "RENTAL"}
+                {"action": "TERMINATE_CONTRACT", "contractId": "contract_123", "reason": "Better opportunity elsewhere"}
                 {"action": "IDLE"}
 
                 TRADE: To buy/sell, you must find another agent and make an offer directly.

@@ -26,6 +26,7 @@ public class SimulationViewer extends Application {
     private static MetricsDao metricsDao;
     private static CommunicationDao communicationDao;
     private static com.measim.service.llm.BudgetPauseHandler budgetPauseHandler;
+    private static com.measim.dao.LlmDao llmDao;
 
     private HexRenderer hexRenderer;
     private InspectorPanel inspectorPanel;
@@ -46,6 +47,10 @@ public class SimulationViewer extends Application {
 
     public static void setBudgetPauseHandler(com.measim.service.llm.BudgetPauseHandler handler) {
         budgetPauseHandler = handler;
+    }
+
+    public static void setLlmDao(com.measim.dao.LlmDao dao) {
+        llmDao = dao;
     }
 
     @Override
@@ -161,23 +166,27 @@ public class SimulationViewer extends Application {
                     redraw();
                     if (metricsDao != null) dashboardPanel.update(metricsDao.getHistory());
                     updateComms();
-                    // Update LLM status
+                    // Update LLM status + cost
+                    String costText = llmDao != null ? String.format(" | Spent: $%.2f (%d calls)",
+                            llmDao.totalSpent(), llmDao.totalCalls()) : "";
                     if (budgetPauseHandler != null) {
                         if (budgetPauseHandler.isPaused()) {
-                            llmStatusLabel.setText("LLM: PAUSED (credits exhausted)");
+                            llmStatusLabel.setText("LLM: PAUSED" + costText);
                             llmStatusLabel.setStyle("-fx-font-size: 11; -fx-padding: 3; -fx-text-fill: red;");
                             resumeBtn.setVisible(true);
                             resumeBtn.setText("Resume LLM");
                         } else if (budgetPauseHandler.isSkipMode()) {
-                            llmStatusLabel.setText("LLM: SKIPPED (deterministic mode)");
+                            llmStatusLabel.setText("LLM: SKIPPED" + costText);
                             llmStatusLabel.setStyle("-fx-font-size: 11; -fx-padding: 3; -fx-text-fill: orange;");
                             resumeBtn.setVisible(true);
                             resumeBtn.setText("Re-enable LLM");
                         } else {
-                            llmStatusLabel.setText("LLM: Active");
+                            llmStatusLabel.setText("LLM: Active" + costText);
                             llmStatusLabel.setStyle("-fx-font-size: 11; -fx-padding: 3; -fx-text-fill: green;");
                             resumeBtn.setVisible(false);
                         }
+                    } else if (llmDao != null) {
+                        llmStatusLabel.setText("LLM" + costText);
                     }
                 }));
         refreshTimer.setCycleCount(javafx.animation.Animation.INDEFINITE);
