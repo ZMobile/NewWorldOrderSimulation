@@ -51,6 +51,9 @@ public class ActionExecutionPhase implements TickPhase {
     private final PropertyService propertyService;
     private final ContractService contractService;
     private final com.measim.service.trade.TradeService tradeService;
+    private final com.measim.service.trade.CommunicationRangeService commRange;
+    private final com.measim.service.communication.CommunicationService commService;
+    private final com.measim.service.economy.CreditFlowService creditFlowService;
     private final SimulationConfig config;
     private SubsistenceHelper subsistenceHelper;
 
@@ -61,6 +64,9 @@ public class ActionExecutionPhase implements TickPhase {
                                  GameMasterService gameMasterService, InfrastructureService infrastructureService,
                                  AgentServiceManager agentServiceManager, PropertyService propertyService,
                                  ContractService contractService, com.measim.service.trade.TradeService tradeService,
+                                 com.measim.service.trade.CommunicationRangeService commRange,
+                                 com.measim.service.communication.CommunicationService commService,
+                                 com.measim.service.economy.CreditFlowService creditFlowService,
                                  PropertyDao propertyDao, ContractDao contractDao, SimulationConfig config) {
         this.decisionPhase = decisionPhase;
         this.agentDao = agentDao;
@@ -75,6 +81,9 @@ public class ActionExecutionPhase implements TickPhase {
         this.propertyService = propertyService;
         this.contractService = contractService;
         this.tradeService = tradeService;
+        this.commRange = commRange;
+        this.commService = commService;
+        this.creditFlowService = creditFlowService;
         this.config = config;
         this.subsistenceHelper = new SubsistenceHelper(worldDao, propertyDao, contractDao);
     }
@@ -183,6 +192,17 @@ public class ActionExecutionPhase implements TickPhase {
 
         agent.state().addExperience("extraction");
         tile.history().recordAgentVisit();
+
+        // Public resource extraction fee: extracting from unclaimed public land costs a small fee
+        // that flows to UBI pool. Agents with very low credits are exempt (subsistence foraging).
+        boolean ownsThisTile = propertyService.getAgentProperties(agent.id()).stream()
+                .anyMatch(c -> c.tile().equals(loc));
+        if (!ownsThisTile && agent.state().credits() > 50 && !tile.resources().isEmpty()) {
+            double fee = 0.5; // small royalty for public resource use
+            if (agent.state().spendCredits(fee)) {
+                creditFlowService.addPublicRevenue(fee, "extraction_royalty");
+            }
+        }
 
         // Extract from local tile
         for (ResourceNode resource : tile.resources()) {
@@ -508,6 +528,24 @@ public class ActionExecutionPhase implements TickPhase {
             }
             case AgentAction.RejectTrade reject -> {
                 tradeService.rejectOffer(reject.offerId());
+            }
+            case AgentAction.SendMessage msg -> {
+                // Private message — only delivered if within comm range
+                var target = agentDao.getAgent(msg.targetAgentId());
+                if (target != null && commRange.canCommunicate(agent, target)) {
+                    commService.sendAgentMessage(agent.id(), msg.targetAgentId(),
+                            msg.content(), com.measim.model.communication.Message.MessageType.SOCIAL, currentTick);
+                    agent.addMemory(new MemoryEntry(currentTick, "MESSAGE",
+                            "Sent to " + msg.targetAgentId() + ": " + msg.content().substring(0, Math.min(60, msg.content().length())),
+                            0.3, msg.targetAgentId(), 0));
+                }
+            }
+            case AgentAction.BroadcastMessage broadcast -> {
+                commService.sendAgentMessage(agent.id(), "ALL_AT_TILE",
+                        broadcast.content(), com.measim.model.communication.Message.MessageType.INFORMATION_SHARE, currentTick);
+                agent.addMemory(new MemoryEntry(currentTick, "BROADCAST",
+                        "Said: " + broadcast.content().substring(0, Math.min(60, broadcast.content().length())),
+                        0.3, null, 0));
             }
             case AgentAction.ExtractResource ignored -> {}
             case AgentAction.Produce ignored -> {}

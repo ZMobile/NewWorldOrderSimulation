@@ -84,6 +84,11 @@ public final class LlmResponseParser {
                 }
                 case "ACCEPT_TRADE" -> new AgentAction.AcceptTrade(root.path("offerId").asText());
                 case "REJECT_TRADE" -> new AgentAction.RejectTrade(root.path("offerId").asText());
+                case "SEND_MESSAGE" -> new AgentAction.SendMessage(
+                        root.path("targetAgent").asText(),
+                        root.path("message").asText(""));
+                case "BROADCAST" -> new AgentAction.BroadcastMessage(
+                        root.path("message").asText(""));
                 default -> new AgentAction.Idle();
             };
         } catch (Exception e) {

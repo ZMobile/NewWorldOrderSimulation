@@ -72,6 +72,7 @@ public class Main {
                         sharedInjector.getInstance(AgentDao.class),
                         sharedInjector.getInstance(MetricsDao.class));
                 SimulationViewer.setCommunicationDao(sharedInjector.getInstance(CommunicationDao.class));
+                SimulationViewer.setBudgetPauseHandler(sharedInjector.getInstance(com.measim.service.llm.BudgetPauseHandler.class));
 
                 // Open viewer immediately on FX thread
                 Platform.runLater(() -> {
@@ -107,6 +108,7 @@ public class Main {
                 injector.getInstance(AgentDao.class),
                 injector.getInstance(MetricsDao.class));
         SimulationViewer.setCommunicationDao(injector.getInstance(CommunicationDao.class));
+        SimulationViewer.setBudgetPauseHandler(injector.getInstance(com.measim.service.llm.BudgetPauseHandler.class));
 
         // Run sim in background, launch viewer on main thread
         new Thread(() -> {

@@ -7,79 +7,140 @@ import javafx.scene.control.ButtonType;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Pauses the simulation when the Anthropic API rejects requests due to
- * exhausted account credits. Shows a popup asking the user to reload
- * credits on their Anthropic account. The exact same request is retried
- * after the user clicks Continue.
+ * exhausted account credits. Non-blocking — user can dismiss and inspect
+ * the simulation while paused.
+ *
+ * Three options:
+ *   Continue — user added credits, retry the request
+ *   Skip — continue in deterministic mode for this session
+ *   Leave Paused — dismiss popup, sim stays paused (can resume later via UI)
  */
 @Singleton
 public class BudgetPauseHandler {
 
+    public enum Resolution { RETRY, SKIP, PAUSED }
+
     private final AtomicBoolean pauseTriggered = new AtomicBoolean(false);
+    private final AtomicBoolean skipMode = new AtomicBoolean(false);
+    private final AtomicReference<CountDownLatch> pauseLatch = new AtomicReference<>(null);
+    private volatile Resolution lastResolution = Resolution.RETRY;
 
     /**
      * Called when the API returns a billing/credit error.
-     * Blocks the calling thread, shows a popup on the FX thread.
-     * Returns true if user clicked Continue (retry), false if they clicked Skip (deterministic).
+     * If skipMode is active (user previously chose Skip), returns false immediately.
+     * Otherwise blocks and shows popup.
+     * Returns true if user wants to retry, false if skip/paused.
      */
     public boolean pauseForBudget(double totalSpent, double unused) {
-        // Only one thread triggers the popup — others wait
+        // If user already chose Skip this session, don't show popup again
+        if (skipMode.get()) return false;
+
+        // Only first thread triggers popup — others wait for resolution
         if (!pauseTriggered.compareAndSet(false, true)) {
-            waitForResume();
-            return true; // assume user clicked Continue
+            waitForResolution();
+            return lastResolution == Resolution.RETRY;
         }
 
         System.out.printf("    [API] Credits exhausted after $%.2f spent. Simulation paused.%n", totalSpent);
         System.out.flush();
 
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicBoolean retry = new AtomicBoolean(false);
+        pauseLatch.set(latch);
+
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("API Credits Exhausted");
+            alert.setHeaderText("Anthropic API credits have run out");
+            alert.setContentText(String.format(
+                    "Total spent this session: $%.2f\n\n" +
+                    "Continue: Add credits at console.anthropic.com, then retry\n" +
+                    "Skip: Continue in deterministic mode (no more LLM calls)\n" +
+                    "Leave Paused: Dismiss this dialog to inspect the simulation",
+                    totalSpent));
+
+            ButtonType continueBtn = new ButtonType("Continue");
+            ButtonType skipBtn = new ButtonType("Skip (Deterministic)");
+            ButtonType pauseBtn = new ButtonType("Leave Paused");
+            alert.getButtonTypes().setAll(continueBtn, skipBtn, pauseBtn);
+
+            var result = alert.showAndWait();
+            if (result.isPresent()) {
+                if (result.get() == continueBtn) {
+                    lastResolution = Resolution.RETRY;
+                } else if (result.get() == skipBtn) {
+                    lastResolution = Resolution.SKIP;
+                    skipMode.set(true); // don't ask again this session
+                } else {
+                    lastResolution = Resolution.PAUSED;
+                }
+            } else {
+                lastResolution = Resolution.PAUSED; // closed dialog = leave paused
+            }
+
+            switch (lastResolution) {
+                case RETRY -> System.out.println("    [API] User clicked Continue. Retrying...");
+                case SKIP -> System.out.println("    [API] User clicked Skip. Deterministic mode for rest of session.");
+                case PAUSED -> System.out.println("    [API] User chose Leave Paused. Inspect simulation, then call resume.");
+            }
+            System.out.flush();
+
+            latch.countDown();
+            pauseTriggered.set(false);
+        });
 
         try {
-            Platform.runLater(() -> {
-                try {
-                    Alert alert = new Alert(Alert.AlertType.WARNING);
-                    alert.setTitle("API Credits Exhausted");
-                    alert.setHeaderText("Anthropic API credits have run out");
-                    alert.setContentText(String.format(
-                            "Total spent this session: $%.2f\n\n" +
-                            "To continue with LLM:\n" +
-                            "1. Add credits at console.anthropic.com\n" +
-                            "2. Click 'Continue' to retry\n\n" +
-                            "Or click 'Skip' to continue in deterministic mode.",
-                            totalSpent));
-
-                    ButtonType continueBtn = new ButtonType("Continue");
-                    ButtonType skipBtn = new ButtonType("Skip (Deterministic)");
-                    alert.getButtonTypes().setAll(continueBtn, skipBtn);
-
-                    var result = alert.showAndWait();
-                    retry.set(result.isPresent() && result.get() == continueBtn);
-                } finally {
-                    latch.countDown();
-                }
-            });
-
             latch.await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-        } finally {
-            pauseTriggered.set(false);
         }
 
-        if (retry.get()) {
-            System.out.println("    [API] User clicked Continue. Retrying...");
-        } else {
-            System.out.println("    [API] User clicked Skip. Continuing in deterministic mode.");
+        // If paused, block until resume() is called
+        if (lastResolution == Resolution.PAUSED) {
+            CountDownLatch resumeLatch = new CountDownLatch(1);
+            pauseLatch.set(resumeLatch);
+            try {
+                resumeLatch.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            // After resume, retry
+            return true;
         }
-        System.out.flush();
 
-        return retry.get();
+        return lastResolution == Resolution.RETRY;
     }
 
-    private void waitForResume() {
+    /** Called from UI to resume a paused simulation. */
+    public void resume() {
+        CountDownLatch latch = pauseLatch.getAndSet(null);
+        if (latch != null) {
+            lastResolution = Resolution.RETRY;
+            latch.countDown();
+            System.out.println("    [API] Simulation resumed by user.");
+        }
+    }
+
+    /** Check if simulation is currently paused waiting for credits. */
+    public boolean isPaused() {
+        return pauseLatch.get() != null && lastResolution == Resolution.PAUSED;
+    }
+
+    /** Check if user chose to skip LLM for the rest of the session. */
+    public boolean isSkipMode() {
+        return skipMode.get();
+    }
+
+    /** Re-enable LLM calls after user has added credits. Called from UI. */
+    public void exitSkipMode() {
+        skipMode.set(false);
+        System.out.println("    [API] Skip mode disabled. LLM calls will resume.");
+    }
+
+    private void waitForResolution() {
         while (pauseTriggered.get()) {
             try { Thread.sleep(100); } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

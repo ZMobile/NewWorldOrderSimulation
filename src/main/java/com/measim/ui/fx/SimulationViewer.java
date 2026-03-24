@@ -25,6 +25,7 @@ public class SimulationViewer extends Application {
     private static AgentDao agentDao;
     private static MetricsDao metricsDao;
     private static CommunicationDao communicationDao;
+    private static com.measim.service.llm.BudgetPauseHandler budgetPauseHandler;
 
     private HexRenderer hexRenderer;
     private InspectorPanel inspectorPanel;
@@ -41,6 +42,10 @@ public class SimulationViewer extends Application {
 
     public static void setCommunicationDao(CommunicationDao comms) {
         communicationDao = comms;
+    }
+
+    public static void setBudgetPauseHandler(com.measim.service.llm.BudgetPauseHandler handler) {
+        budgetPauseHandler = handler;
     }
 
     @Override
@@ -84,7 +89,27 @@ public class SimulationViewer extends Application {
         verticalSplit.getItems().addAll(horizontalSplit, liveConsolePanel);
         verticalSplit.setDividerPositions(0.72);
 
+        // Status bar with LLM controls
+        javafx.scene.control.Button resumeBtn = new javafx.scene.control.Button("Resume LLM");
+        resumeBtn.setStyle("-fx-font-size: 11; -fx-background-color: #4CAF50; -fx-text-fill: white;");
+        resumeBtn.setVisible(false);
+        resumeBtn.setOnAction(e -> {
+            if (budgetPauseHandler != null) {
+                if (budgetPauseHandler.isPaused()) {
+                    budgetPauseHandler.resume();
+                } else if (budgetPauseHandler.isSkipMode()) {
+                    budgetPauseHandler.exitSkipMode();
+                }
+                resumeBtn.setVisible(false);
+            }
+        });
+        Label llmStatusLabel = new Label("LLM: Active");
+        llmStatusLabel.setStyle("-fx-font-size: 11; -fx-padding: 3;");
+        javafx.scene.layout.HBox statusBar = new javafx.scene.layout.HBox(8, llmStatusLabel, resumeBtn);
+        statusBar.setStyle("-fx-padding: 3; -fx-background-color: #f0f0f0;");
+
         BorderPane root = new BorderPane();
+        root.setTop(statusBar);
         root.setCenter(verticalSplit);
         root.setLeft(dashboardPanel);
 
@@ -136,6 +161,24 @@ public class SimulationViewer extends Application {
                     redraw();
                     if (metricsDao != null) dashboardPanel.update(metricsDao.getHistory());
                     updateComms();
+                    // Update LLM status
+                    if (budgetPauseHandler != null) {
+                        if (budgetPauseHandler.isPaused()) {
+                            llmStatusLabel.setText("LLM: PAUSED (credits exhausted)");
+                            llmStatusLabel.setStyle("-fx-font-size: 11; -fx-padding: 3; -fx-text-fill: red;");
+                            resumeBtn.setVisible(true);
+                            resumeBtn.setText("Resume LLM");
+                        } else if (budgetPauseHandler.isSkipMode()) {
+                            llmStatusLabel.setText("LLM: SKIPPED (deterministic mode)");
+                            llmStatusLabel.setStyle("-fx-font-size: 11; -fx-padding: 3; -fx-text-fill: orange;");
+                            resumeBtn.setVisible(true);
+                            resumeBtn.setText("Re-enable LLM");
+                        } else {
+                            llmStatusLabel.setText("LLM: Active");
+                            llmStatusLabel.setStyle("-fx-font-size: 11; -fx-padding: 3; -fx-text-fill: green;");
+                            resumeBtn.setVisible(false);
+                        }
+                    }
                 }));
         refreshTimer.setCycleCount(javafx.animation.Animation.INDEFINITE);
         refreshTimer.play();

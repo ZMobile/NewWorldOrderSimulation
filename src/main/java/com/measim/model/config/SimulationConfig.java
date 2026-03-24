@@ -44,7 +44,7 @@ public class SimulationConfig {
     private int snapshotInterval = 12;
     private int metricsInterval = 1;
     private boolean communalGatheringPoints = true;
-    private int ubiDistributionInterval = 1;
+    private int ubiDistributionInterval = 12; // accumulate for 1 year before distributing
     private double resourceDiscoveryProbability = 0.02;
     private double techBreakthroughProbability = 0.01;
     private double environmentalCrisisThreshold = 0.3;

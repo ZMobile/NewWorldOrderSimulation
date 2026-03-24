@@ -41,4 +41,10 @@ public sealed interface AgentAction {
 
     /** Reject a pending trade offer. */
     record RejectTrade(String offerId) implements AgentAction {}
+
+    /** Send a private message to a specific agent within comm range. */
+    record SendMessage(String targetAgentId, String content) implements AgentAction {}
+
+    /** Broadcast a message to all agents at the current tile/gathering point. */
+    record BroadcastMessage(String content) implements AgentAction {}
 }

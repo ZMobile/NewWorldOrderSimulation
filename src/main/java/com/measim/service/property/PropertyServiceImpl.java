@@ -23,11 +23,14 @@ public class PropertyServiceImpl implements PropertyService {
     private final PropertyDao propertyDao;
     private final WorldDao worldDao;
     private final AgentDao agentDao;
+    private final com.measim.service.economy.CreditFlowService creditFlowService;
 
     @Inject
-    public PropertyServiceImpl(PropertyDao propertyDao, WorldDao worldDao, AgentDao agentDao) {
+    public PropertyServiceImpl(PropertyDao propertyDao, WorldDao worldDao, AgentDao agentDao,
+                                com.measim.service.economy.CreditFlowService creditFlowService) {
         this.propertyDao = propertyDao;
         this.worldDao = worldDao;
+        this.creditFlowService = creditFlowService;
         this.agentDao = agentDao;
     }
 
@@ -51,6 +54,9 @@ public class PropertyServiceImpl implements PropertyService {
 
         double price = getClaimBasePrice(tile) * slots;
         if (!agent.state().spendCredits(price)) return Optional.empty();
+
+        // Property purchase revenue is public income — flows to UBI pool
+        creditFlowService.addPublicRevenue(price, "property_claim_purchase");
 
         String id = "claim_" + UUID.randomUUID().toString().substring(0, 8);
         TileClaim claim = new TileClaim(id, tile, slots, agentId, price, currentTick);

@@ -40,6 +40,7 @@ public class DecisionPhase implements TickPhase {
     private final LlmService llmService;
     private final com.measim.service.trade.TradeService tradeService;
     private final com.measim.service.trade.CommunicationRangeService commRange;
+    private final com.measim.dao.CommunicationDao communicationDao;
     private final SimulationConfig config;
     private final Map<String, AgentAction> pendingActions = new HashMap<>();
 
@@ -48,6 +49,7 @@ public class DecisionPhase implements TickPhase {
                           AgentDecisionService decisionService, LlmService llmService,
                           com.measim.service.trade.TradeService tradeService,
                           com.measim.service.trade.CommunicationRangeService commRange,
+                          com.measim.dao.CommunicationDao communicationDao,
                           SimulationConfig config) {
         this.agentDao = agentDao;
         this.marketDao = marketDao;
@@ -56,6 +58,7 @@ public class DecisionPhase implements TickPhase {
         this.llmService = llmService;
         this.tradeService = tradeService;
         this.commRange = commRange;
+        this.communicationDao = communicationDao;
         this.config = config;
     }
 
@@ -103,7 +106,7 @@ public class DecisionPhase implements TickPhase {
                 long llmStart = System.currentTimeMillis();
                 var futures = toEscalate.stream()
                         .map(agent -> {
-                            String spatial = buildSpatialContext(agent);
+                            String spatial = buildSpatialContext(agent, currentTick);
                             String decision = "Strategic decision for tick " + currentTick;
                             // Build trade context: pending offers + visible open offers
                             var incoming = tradeService.getIncomingOffers(agent.id());
@@ -177,7 +180,7 @@ public class DecisionPhase implements TickPhase {
         };
     }
 
-    private String buildSpatialContext(Agent agent) {
+    private String buildSpatialContext(Agent agent, int currentTick) {
         var loc = agent.state().location();
         var tile = worldDao.getTile(loc);
         if (tile == null) return "Unknown location.";
@@ -224,6 +227,26 @@ public class DecisionPhase implements TickPhase {
             }
         } else {
             sb.append("No agents within communication range.\n");
+        }
+
+        // Recent messages directed at this agent (private + broadcast at their tile)
+        var recentMessages = communicationDao.getAllMessages().stream()
+                .filter(m -> m.tick() >= Math.max(0, currentTick - 3)) // last 3 ticks
+                .filter(m -> m.channel() == com.measim.model.communication.Message.Channel.AGENT_TO_AGENT
+                        || m.channel() == com.measim.model.communication.Message.Channel.BROADCAST)
+                .filter(m -> !m.senderId().equals(agent.id())) // not my own messages
+                .filter(m -> m.receiverId().equals(agent.id()) // directed at me
+                        || "ALL_AT_TILE".equals(m.receiverId())) // or broadcast
+                .limit(8)
+                .toList();
+        if (!recentMessages.isEmpty()) {
+            sb.append("Recent messages:\n");
+            for (var msg : recentMessages) {
+                String prefix = msg.channel() == com.measim.model.communication.Message.Channel.BROADCAST
+                        ? "[group]" : "[private]";
+                sb.append(String.format("  %s %s (tick %d): %s\n", prefix, msg.senderId(), msg.tick(),
+                        msg.content().substring(0, Math.min(120, msg.content().length()))));
+            }
         }
 
         return sb.toString();

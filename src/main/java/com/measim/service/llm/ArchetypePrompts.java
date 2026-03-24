@@ -37,6 +37,10 @@ public final class ArchetypePrompts {
                 - Property claims give you rights to build on tile slots. Buy before building.
                 - Work relations (employment, contracting) are between agents via contracts.
                 - Risks exist on everything — true risks may differ from what you perceive.
+                - You can COMMUNICATE with nearby agents via private messages or tile broadcasts.
+                  Use this to negotiate trades, share information, form alliances, or coordinate.
+                  Your archetype should guide HOW you communicate — an Exploiter might deceive,
+                  a Cooperator might organize, a Politician might campaign.
 
                 Respond with exactly ONE action as JSON. You may use a STANDARD action or a FREE-FORM action.
 
@@ -55,6 +59,8 @@ public final class ArchetypePrompts {
                 {"action": "OFFER_TRADE", "targetAgent": "agent_id" or null (open offer), "itemsOffered": {"TIMBER": 3}, "itemsRequested": {"FOOD": 2}, "creditsOffered": 0, "creditsRequested": 0, "message": "I'll trade timber for food"}
                 {"action": "ACCEPT_TRADE", "offerId": "trade_123"}
                 {"action": "REJECT_TRADE", "offerId": "trade_123"}
+                {"action": "SEND_MESSAGE", "targetAgent": "agent_42", "message": "Your message here"}
+                {"action": "BROADCAST", "message": "Message visible to all agents at this tile"}
                 {"action": "IDLE"}
 
                 TRADE: To buy/sell, you must find another agent and make an offer directly.
@@ -65,12 +71,9 @@ public final class ArchetypePrompts {
                 FREE-FORM action (ONLY for creative strategies that no standard action covers):
                 {"action": "FREE_FORM", "description": "Describe exactly what you want to do, referencing your specific assets, infrastructure, and plans", "budget": N.N}
 
-                IMPORTANT: Do NOT use FREE_FORM for things standard actions already handle:
-                - Buying/selling goods -> use BUY or SELL
-                - Moving -> use MOVE
-                - Building -> use BUILD_INFRASTRUCTURE
-                - Research -> use INVEST_RESEARCH
-                FREE_FORM is ONLY for combined or novel strategies that require GM judgment.
+                FREE_FORM is ONLY for combined or novel strategies that no standard action covers.
+                Do NOT use FREE_FORM for moving (MOVE), building (BUILD_INFRASTRUCTURE),
+                research (INVEST_RESEARCH), or trading (OFFER_TRADE). Use the standard actions.
                 Examples: "Use my aqueduct's excess capacity to sell water transport to neighboring farmers"
                 "Combine my warehouse storage with a logistics service to create a distribution hub"
                 "Negotiate a bulk trade deal with 3 nearby producers for exclusive supply rights"

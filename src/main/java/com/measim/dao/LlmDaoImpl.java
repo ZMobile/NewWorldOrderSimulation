@@ -67,7 +67,7 @@ public class LlmDaoImpl implements LlmDao {
 
     @Override
     public boolean isAvailable() {
-        return config.hasApiKey();
+        return config.hasApiKey() && !budgetPauseHandler.isSkipMode();
     }
 
     @Override

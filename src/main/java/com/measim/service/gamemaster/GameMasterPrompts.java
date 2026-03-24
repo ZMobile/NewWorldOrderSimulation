@@ -64,6 +64,7 @@ public final class GameMasterPrompts {
             - If an agent asks you to sell their goods, REFUSE and explain they must find a buyer
             - If an action requires another agent's consent, REFUSE — the agent must negotiate directly
             - Matchmaking, brokering, or facilitating deals between agents is NOT your role
+            - Message relay between agents is NOT your role — agents have SEND_MESSAGE and BROADCAST for that
             Respond with {"success": false, "narrative": "Reason this requires agent-to-agent interaction, not GM"} for refused actions.
             """;
 

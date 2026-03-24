@@ -74,7 +74,7 @@ The difference between what the buyer pays and what the seller receives flows in
 
 This is the critical piece. As automation increases, the Labor Displacement axis generates more diversion, which increases UBI payments. **The system automatically scales its safety net to the level of automation without requiring any legislative action.**
 
-UBI is comfortable, not subsistence. It covers housing, food, healthcare, education. Above UBI, a fully competitive economy operates — you want a mega yacht, you compete. The floor is guaranteed; the ceiling is unlimited.
+Pre-automation UBI is funded by property claim purchases, extraction royalties on public land, and transaction taxes — all flowing to the UBI pool; UBI distributes yearly. UBI is comfortable, not subsistence. It covers housing, food, healthcare, education. Above UBI, a fully competitive economy operates — you want a mega yacht, you compete. The floor is guaranteed; the ceiling is unlimited.
 
 ### The Three Enforcement Domains
 
@@ -124,6 +124,7 @@ You don't deploy a new operating system to production without testing it. MeaSim
 - **Robot labor** with configurable automation curves
 - **Multi-government jurisdictions** with different MEAS parameters, enabling direct policy comparison
 - **Agent migration** between jurisdictions based on satisfaction
+- **Agent messaging** — private messages (SEND_MESSAGE) and tile-local broadcasts (BROADCAST) within communication range, enabling negotiation, coalition building, and information sharing
 - **Technology discovery** through a Game Master LLM that adjudicates research and maintains world coherence
 
 ### The 18 Archetypes: Adversarial Testing by Design
@@ -332,7 +333,7 @@ Service categories: financial, logistics, healthcare, education, legal, security
 |---|-------|------|-------------|
 | 1 | Perception | No | Agents observe environment, update risk perceptions from events |
 | 2 | Decision | **Tier 1+2** | Deterministic for all agents, then LLM escalation for eligible agents (20-50% per tick) |
-| 3 | Action | Partial | Economic pipeline (consume→extract→produce→sell→buy→hire) + strategic action + GM eval |
+| 3 | Action | Partial | Deterministic survival (consume→extract→produce→move) + LLM-driven trade (offer/accept/reject/negotiate) + strategic action + GM eval |
 | 4 | Market | No | Proximity-based trades resolve, MEAS modifiers applied, credits flow |
 | 5 | Contracts | No | Wages paid, rent collected, service subscriptions, breach detection |
 | 6 | Scoring | No | Score vectors recomputed, modifiers updated, audit trail |
@@ -388,11 +389,11 @@ export ANTHROPIC_API_KEY=your-key-here
 $env:ANTHROPIC_API_KEY = "your-key-here"
 ```
 
-Or enter it in the launcher UI's API Key field. Default model: Claude Sonnet 4.6 (`claude-sonnet-4-6`).
+Or enter it in the launcher UI's API Key field. Default model: Claude Sonnet 4.6 (`claude-sonnet-4-6`). When API credits run out, the simulation pauses with options to continue (after reloading credits), skip to deterministic-only mode, or leave paused for inspection. A status bar shows LLM state with a resume button.
 
 ### Free-Form Agent Actions
 
-Agents route basic operations (buy, sell, move, produce) through the deterministic system — these never touch the GM. The `FREE_FORM` action type is reserved for novel combined strategies that cannot be expressed as standard actions:
+Agents route survival operations (extract, produce, move) through the deterministic system — these never touch the GM. Trade decisions (offer, accept, reject, negotiate) go through LLM agent reasoning, where archetype personality drives whether an agent haggles, accepts, or walks away. The `FREE_FORM` action type is reserved for novel combined strategies that cannot be expressed as standard actions:
 
 ```json
 {"action": "FREE_FORM", "description": "Use my aqueduct's excess capacity to sell water transport to neighboring farmers while running my drill at half capacity to reduce wear", "budget": 200}
@@ -484,7 +485,7 @@ That's the point. **Economics should be an engineering discipline.** You specify
 All core systems built, wired, and compiling:
 
 - **World**: Hex grid, Perlin noise terrain, 7 terrain types, resource placement, settlement zones, tile history tracking
-- **Economy**: Realistic trade-driven credit flow (no fake injection), proximity-based agent-to-agent trade (no built-in exchange — marketplaces emerge from agent-created services), production chains, consumption needs
+- **Economy**: Realistic credit flow (no fake injection), proximity-based agent-to-agent trade with LLM-driven negotiation (no built-in exchange — marketplaces emerge from agent-created services), production chains, consumption needs
 - **MEAS Scoring**: All 5 axes (EF, CC, LD, RC, EP) with exact spec formulas, deterministic, auditable
 - **Agents**: 18 archetypes (Worker 15%, Entrepreneur 6%, Free Rider 7%, etc.), memory streams, risk-adjusted utility decisions, perceived risk model, experience tracking per domain
 - **LLM Integration**: Claude API over HTTP/1.1 with a dedicated 100-thread pool (handles 100+ concurrent requests without thread starvation), two-tier decisions (deterministic + LLM escalation), concurrent batching, retry logic (3 retries with backoff), cost tracking

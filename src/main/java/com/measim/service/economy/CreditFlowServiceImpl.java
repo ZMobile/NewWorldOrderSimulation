@@ -62,6 +62,11 @@ public class CreditFlowServiceImpl implements CreditFlowService {
         return perCapita;
     }
 
+    @Override
+    public void addPublicRevenue(double amount, String source) {
+        if (amount > 0) ubiPool += amount;
+    }
+
     @Override public double ubiPool() { return ubiPool; }
     @Override public double environmentalRemediationFund() { return environmentalRemediationFund; }
     @Override public double commonsInvestmentFund() { return commonsInvestmentFund; }
