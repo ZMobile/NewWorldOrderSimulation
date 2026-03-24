@@ -2,6 +2,7 @@ package com.measim.service.simulation.phases;
 
 import com.measim.dao.WorldDao;
 import com.measim.model.event.EventBus;
+import com.measim.service.externality.ExternalityService;
 import com.measim.service.infrastructure.InfrastructureService;
 import com.measim.service.simulation.TickPhase;
 import com.measim.service.world.EnvironmentService;
@@ -12,15 +13,18 @@ import jakarta.inject.Singleton;
 public class EnvironmentPhase implements TickPhase {
     private final EnvironmentService environmentService;
     private final InfrastructureService infrastructureService;
+    private final ExternalityService externalityService;
     private final WorldDao worldDao;
     private final EventBus eventBus;
 
     @Inject
     public EnvironmentPhase(EnvironmentService environmentService,
                              InfrastructureService infrastructureService,
+                             ExternalityService externalityService,
                              WorldDao worldDao, EventBus eventBus) {
         this.environmentService = environmentService;
         this.infrastructureService = infrastructureService;
+        this.externalityService = externalityService;
         this.worldDao = worldDao;
         this.eventBus = eventBus;
     }
@@ -42,6 +46,9 @@ public class EnvironmentPhase implements TickPhase {
 
         // Infrastructure maintenance: owners pay upkeep or infra degrades
         infrastructureService.tickMaintenance(currentTick);
+
+        // Process externalities: true byproducts applied to world, measurable ones tracked for EF scoring
+        externalityService.processExternalities(currentTick);
 
         // Check for environmental crises
         long crisisTiles = environmentService.crisisTileCount();
