@@ -74,11 +74,15 @@ public class LlmServiceImpl implements LlmService {
 
     @Override
     public CompletableFuture<LlmResponse> queryGameMaster(String systemPrompt, String userPrompt) {
+        return queryGameMasterWithModel(config.gameMasterModel(), systemPrompt, userPrompt);
+    }
+
+    @Override
+    public CompletableFuture<LlmResponse> queryGameMasterWithModel(String model, String systemPrompt, String userPrompt) {
         if (!isAvailable()) {
             return CompletableFuture.completedFuture(LlmResponse.empty());
         }
-
-        LlmRequest request = LlmRequest.gameMaster(config.gameMasterModel(), systemPrompt, userPrompt);
+        LlmRequest request = LlmRequest.gameMaster(model, systemPrompt, userPrompt);
         return llmDao.sendRequest(request);
     }
 

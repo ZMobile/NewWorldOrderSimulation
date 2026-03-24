@@ -13,6 +13,7 @@ public interface LlmService {
                                                      String decisionContext, int currentTick);
     CompletableFuture<List<AgentAction>> batchEscalate(List<EscalationRequest> requests);
     CompletableFuture<LlmResponse> queryGameMaster(String systemPrompt, String userPrompt);
+    CompletableFuture<LlmResponse> queryGameMasterWithModel(String model, String systemPrompt, String userPrompt);
     boolean isAvailable();
     double totalSpent();
     double budgetRemaining();

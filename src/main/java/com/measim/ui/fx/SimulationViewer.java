@@ -30,6 +30,7 @@ public class SimulationViewer extends Application {
     private InspectorPanel inspectorPanel;
     private DashboardPanel dashboardPanel;
     private CommunicationPanel communicationPanel;
+    private LiveConsolePanel liveConsolePanel;
     private Canvas canvas;
 
     public static void setDependencies(WorldDao world, AgentDao agent, MetricsDao metrics) {
@@ -48,9 +49,9 @@ public class SimulationViewer extends Application {
         inspectorPanel = new InspectorPanel();
         dashboardPanel = new DashboardPanel();
         communicationPanel = new CommunicationPanel();
+        liveConsolePanel = new LiveConsolePanel();
 
         canvas = new Canvas(800, 600);
-        Label statusBar = new Label("Click a tile to inspect. Scroll to zoom. Drag to pan. Communication log at bottom.");
 
         Pane canvasHolder = new Pane(canvas);
         canvas.widthProperty().bind(canvasHolder.widthProperty());
@@ -71,11 +72,16 @@ public class SimulationViewer extends Application {
         communicationPanel.getChannelFilter().setOnAction(e -> updateComms());
         communicationPanel.getSearchField().textProperty().addListener((obs, o, n) -> updateComms());
 
+        // Main layout: map in center, panels on sides, console at bottom
+        javafx.scene.control.SplitPane centerSplit = new javafx.scene.control.SplitPane();
+        centerSplit.setOrientation(javafx.geometry.Orientation.VERTICAL);
+        centerSplit.getItems().addAll(canvasHolder, liveConsolePanel);
+        centerSplit.setDividerPositions(0.75);
+
         BorderPane root = new BorderPane();
-        root.setCenter(canvasHolder);
+        root.setCenter(centerSplit);
         root.setRight(rightTabs);
         root.setLeft(dashboardPanel);
-        root.setBottom(statusBar);
 
         // Mouse interactions
         canvas.setOnMouseClicked(e -> {
@@ -110,9 +116,10 @@ public class SimulationViewer extends Application {
             redraw();
         });
 
-        Scene scene = new Scene(root, 1500, 850);
+        Scene scene = new Scene(root, 1500, 900);
         primaryStage.setTitle("MeaSim — New World Order Simulation");
         primaryStage.setScene(scene);
+        primaryStage.setOnCloseRequest(e -> liveConsolePanel.restoreStdout());
         primaryStage.show();
 
         redraw();

@@ -54,8 +54,8 @@ llm:
   apiKey: ""  # Set here or via ANTHROPIC_API_KEY env var
   apiBaseUrl: "https://api.anthropic.com"
   agentModel: "claude-sonnet-4-6"
-  complexModel: "claude-sonnet-4-6"
-  gameMasterModel: "claude-sonnet-4-6"
+  complexModel: "claude-opus-4-6"       # Used for coherence audit + world events (yearly, ~$3 total)
+  gameMasterModel: "claude-sonnet-4-6"  # Used for routine GM: infrastructure eval, novel actions, research
   maxAgentCallsPerTick: 50
   maxGameMasterCallsPerTick: 20
   totalBudgetUsd: 50.0

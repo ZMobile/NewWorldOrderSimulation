@@ -14,6 +14,7 @@ import com.measim.model.infrastructure.*;
 import com.measim.model.llm.LlmResponse;
 import com.measim.model.world.HexCoord;
 import com.measim.model.world.Tile;
+import com.measim.model.config.SimulationConfig;
 import com.measim.service.communication.CommunicationService;
 import com.measim.model.communication.Message;
 import com.measim.service.llm.LlmService;
@@ -36,6 +37,7 @@ public class GameMasterServiceImpl implements GameMasterService {
     private final AgentDao agentDao;
     private final LlmService llmService;
     private final CommunicationService commService;
+    private final SimulationConfig config;
     private final List<NovelAction> pendingNovelActions = new ArrayList<>();
     private final List<String> recentEventLog = new ArrayList<>();
     private final Random fallbackRandom;
@@ -44,7 +46,8 @@ public class GameMasterServiceImpl implements GameMasterService {
     public GameMasterServiceImpl(TechnologyRegistryDao techRegistry,
                                   ProductionChainDao chainDao, InfrastructureDao infraDao,
                                   WorldDao worldDao, AgentDao agentDao,
-                                  LlmService llmService, CommunicationService commService) {
+                                  LlmService llmService, CommunicationService commService,
+                                  SimulationConfig config) {
         this.techRegistry = techRegistry;
         this.chainDao = chainDao;
         this.infraDao = infraDao;
@@ -52,6 +55,7 @@ public class GameMasterServiceImpl implements GameMasterService {
         this.agentDao = agentDao;
         this.llmService = llmService;
         this.commService = commService;
+        this.config = config;
         this.fallbackRandom = new Random(42);
     }
 
@@ -502,8 +506,10 @@ public class GameMasterServiceImpl implements GameMasterService {
             return generateWorldEventsDeterministic(currentTick, worldState);
         }
         try {
+            // World events use Opus for better holistic reasoning
             String tileSummaries = buildNotableTileSummaries();
-            LlmResponse response = llmService.queryGameMaster(
+            LlmResponse response = llmService.queryGameMasterWithModel(
+                    config.complexModel(),
                     GameMasterPrompts.worldEventSystemPrompt(),
                     GameMasterPrompts.worldEventUserPrompt(worldState, tileSummaries)
             ).join();
@@ -573,7 +579,9 @@ public class GameMasterServiceImpl implements GameMasterService {
             return auditCoherenceDeterministic(currentTick, worldState);
         }
         try {
-            LlmResponse response = llmService.queryGameMaster(
+            // Coherence audit uses Opus for holistic world understanding
+            LlmResponse response = llmService.queryGameMasterWithModel(
+                    config.complexModel(),
                     GameMasterPrompts.coherenceAuditSystemPrompt(),
                     GameMasterPrompts.worldEventUserPrompt(worldState, buildNotableTileSummaries())
             ).join();
