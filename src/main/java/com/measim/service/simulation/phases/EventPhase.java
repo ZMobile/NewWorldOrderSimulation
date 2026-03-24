@@ -65,8 +65,11 @@ public class EventPhase implements TickPhase {
                     discovery.name(), discovery.category().level(), discovery.discovererId());
         }
 
+        // Build world state once for all GM interactions this tick
+        WorldState worldState = buildWorldState(currentTick);
+
         // 2. Adjudicate novel agent actions (from all archetypes)
-        var novelEvents = gameMasterService.adjudicateNovelActions(currentTick);
+        var novelEvents = gameMasterService.adjudicateNovelActions(currentTick, worldState);
         allEvents.addAll(novelEvents);
         for (var event : novelEvents) {
             applyEventToAgents(event, currentTick);
@@ -74,7 +77,6 @@ public class EventPhase implements TickPhase {
         }
 
         // 3. Generate spontaneous world events (GM's initiative)
-        WorldState worldState = buildWorldState(currentTick);
         var spontaneousEvents = gameMasterService.generateWorldEvents(currentTick, worldState);
         allEvents.addAll(spontaneousEvents);
         for (var event : spontaneousEvents) {

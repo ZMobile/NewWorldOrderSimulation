@@ -194,8 +194,15 @@ public class AgentServiceManagerImpl implements AgentServiceManager {
                     Only output JSON.
                     """;
 
+            Agent proposer = agentDao.getAgent(proposal.agentId());
+            String experience = proposer != null ? proposer.state().experienceSummary() : "Unknown";
+            String archetype = proposer != null ? proposer.identity().archetype().name() : "Unknown";
+            long competingServices = serviceDao.getActiveInstances().stream()
+                    .filter(s -> s.type().category().name().equalsIgnoreCase(proposal.intendedCategory()))
+                    .count();
+
             String userPrompt = String.format("""
-                    Agent %s proposes a service:
+                    Agent %s (archetype: %s) proposes a service:
                     Name: %s
                     Description: %s
                     Category: %s
@@ -203,12 +210,16 @@ public class AgentServiceManagerImpl implements AgentServiceManager {
                     Pricing model: %s
                     Required resources: %s
                     Budget: %.0f credits
-                    Existing services in world: %d
+                    Agent experience: %s
+                    (More experience in this service domain = higher quality, better risk profile)
+                    Existing services in world: %d total, %d in same category (competition)
                     """,
-                    proposal.agentId(), proposal.proposedName(), proposal.proposedDescription(),
+                    proposal.agentId(), archetype,
+                    proposal.proposedName(), proposal.proposedDescription(),
                     proposal.intendedCategory(), proposal.targetCustomers(), proposal.proposedPricing(),
                     proposal.requiredResources(), proposal.creditBudget(),
-                    serviceDao.getActiveInstances().size());
+                    experience,
+                    serviceDao.getActiveInstances().size(), competingServices);
 
             LlmResponse response = llmService.queryGameMaster(systemPrompt, userPrompt).join();
             return parseServiceType(response.content(), proposal);

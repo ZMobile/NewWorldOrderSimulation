@@ -35,7 +35,7 @@ public interface GameMasterService {
 
     // --- Novel Agent Actions ---
     void submitNovelAction(NovelAction action);
-    List<WorldEvent> adjudicateNovelActions(int currentTick);
+    List<WorldEvent> adjudicateNovelActions(int currentTick, WorldState worldState);
 
     // --- Spontaneous World Events ---
     List<WorldEvent> generateWorldEvents(int currentTick, WorldState worldState);

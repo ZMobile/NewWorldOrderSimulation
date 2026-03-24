@@ -94,11 +94,15 @@ public class GameMasterServiceImpl implements GameMasterService {
     public Optional<DiscoverySpec> adjudicateProposal(ResearchProposal proposal) {
         if (!llmService.isAvailable()) return adjudicateResearchDeterministic(proposal);
         try {
+            String experience = getAgentExperience(proposal.agentId());
+            String basePrompt = GameMasterPrompts.researchUserPrompt(proposal, techRegistry.getAllTechNodes(),
+                    techRegistry.getAllDiscoveries(), techRegistry.techTreeDepth());
+            // Append agent experience
+            String userPrompt = basePrompt + "\nResearcher experience: " + experience
+                    + "\n(More research experience = higher success chance, better discoveries)\n";
+
             LlmResponse response = llmService.queryGameMaster(
-                    GameMasterPrompts.researchSystemPrompt(),
-                    GameMasterPrompts.researchUserPrompt(proposal, techRegistry.getAllTechNodes(),
-                            techRegistry.getAllDiscoveries(), techRegistry.techTreeDepth())
-            ).join();
+                    GameMasterPrompts.researchSystemPrompt(), userPrompt).join();
             return parseDiscoveryResponse(response.content(), proposal);
         } catch (Exception e) {
             return adjudicateResearchDeterministic(proposal);
@@ -113,13 +117,13 @@ public class GameMasterServiceImpl implements GameMasterService {
     }
 
     @Override
-    public List<WorldEvent> adjudicateNovelActions(int currentTick) {
+    public List<WorldEvent> adjudicateNovelActions(int currentTick, WorldState worldState) {
         List<WorldEvent> events = new ArrayList<>();
         List<NovelAction> toProcess = new ArrayList<>(pendingNovelActions);
         pendingNovelActions.clear();
 
         for (NovelAction action : toProcess) {
-            WorldEvent event = adjudicateOneNovelAction(action, currentTick);
+            WorldEvent event = adjudicateOneNovelAction(action, currentTick, worldState);
             if (event != null) {
                 events.add(event);
                 logEvent(event);
@@ -128,20 +132,16 @@ public class GameMasterServiceImpl implements GameMasterService {
         return events;
     }
 
-    private WorldEvent adjudicateOneNovelAction(NovelAction action, int currentTick) {
+    private WorldEvent adjudicateOneNovelAction(NovelAction action, int currentTick,
+                                                  WorldState worldState) {
         if (!llmService.isAvailable()) {
             return adjudicateNovelActionDeterministic(action, currentTick);
         }
         try {
-            // Build a minimal WorldState for context (caller should provide full state,
-            // but for novel actions we use what we have)
-            WorldState minimalState = new WorldState(0.7, 0.35, 0.5, 1000, 200, 0,
-                    techRegistry.discoveryCount(), currentTick, 12, 0, 0, recentEventLog);
-
             String experience = getAgentExperience(action.agentId());
             LlmResponse response = llmService.queryGameMaster(
                     GameMasterPrompts.novelActionSystemPrompt(),
-                    GameMasterPrompts.novelActionUserPrompt(action, minimalState, experience)
+                    GameMasterPrompts.novelActionUserPrompt(action, worldState, experience)
             ).join();
 
             return parseNovelActionResponse(response.content(), action, currentTick);

@@ -153,9 +153,27 @@ public class RiskServiceImpl implements RiskService {
                     JSON only:
                     {"narrative":"What happened (vivid, 2-3 sentences)","conditionLoss":0.0-1.0,"creditCost":N,"environmentalDamage":0.0-1.0,"productionHalted":false,"resourceLossPercent":0.0-1.0,"satisfactionImpact":-1.0 to 0,"cascadeRadius":0-5,"destroyed":false}
                     """;
-            String userPrompt = String.format("Risk: %s (%s) on %s/%s. Severity: %.2f. Age: %d ticks. Usage: %.0f%%. Can cascade: %s (radius %d).",
+            // Build rich context for the GM
+            String ownerInfo = "";
+            String locationInfo = "";
+            if (profile.entityType() == RiskProfile.EntityType.INFRASTRUCTURE) {
+                infraDao.getById(profile.entityId()).ifPresent(infra -> {});
+                var infraOpt = infraDao.getById(profile.entityId());
+                if (infraOpt.isPresent()) {
+                    var infra = infraOpt.get();
+                    ownerInfo = "Owner: " + infra.ownerId() + ". ";
+                    var tile = worldDao.getTile(infra.location());
+                    if (tile != null) locationInfo = "Terrain: " + tile.terrain() + ", env health: "
+                            + String.format("%.2f", tile.environment().averageHealth()) + ". ";
+                }
+            }
+            String userPrompt = String.format(
+                    "Risk: %s (%s) on %s/%s. %s%sSeverity: %.2f. Age: %d ticks. Usage: %.0f%%. Maintenance gap: %d ticks. Env health: %.2f. Neighbor risk load: %.2f. Can cascade: %s (radius %d).",
                     risk.name(), risk.category(), profile.entityType(), profile.entityId(),
+                    ownerInfo, locationInfo,
                     severity, profile.ageTicks(currentTick), profile.usageIntensity() * 100,
+                    profile.ticksSinceLastMaintenance(currentTick),
+                    getEnvHealthForEntity(profile), profile.neighborRiskLoad(),
                     risk.canCascade(), risk.cascadeRadius());
 
             LlmResponse response = llmService.queryGameMaster(systemPrompt, userPrompt).join();
