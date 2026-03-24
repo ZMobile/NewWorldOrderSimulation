@@ -412,13 +412,28 @@ Agent-GM interactions can involve clarification rounds:
 
 The GM has strict information boundaries: it never reveals true risk profiles, hidden byproducts, other agents' information, or its internal reasoning to agents.
 
-Or in `config/default.yaml`:
-```yaml
-llm:
-  apiKey: "your-key-here"
-```
-
 Without an API key, all LLM features fall back to deterministic systems. The simulation runs fully either way.
+
+### Subsistence Model
+
+Agents have real survival needs with graduated consequences:
+
+- **Food**: consume 1 FOOD/tick or penalties escalate (mild hunger → serious → starvation)
+- **Shelter**: need property claim, rental contract, or settlement zone access
+- **Incapacitation**: at satisfaction 0.1, agents enter survival mode — can only extract and buy food. Creates genuine UBI dependence.
+- **Grace period**: first 6 ticks have no penalties while the economy bootstraps
+- **Safety valves**: starting credits buy ~300 ticks of food, foraging needs only 1 resource input, settlement zones = shelter
+
+### Commodity Reserve
+
+Credits are backed by a physical commodity reserve (not pure fiat):
+
+- Reserve holds MINERAL, ENERGY, TIMBER, FOOD_LAND, WATER_RESOURCE
+- **Minimum ratio**: 20% (reserve value / credits in circulation). Governance parameter.
+- **GM manages yearly** (Opus call): buys/sells commodities, adjusts valuations based on scarcity
+- **Agents cannot access the reserve** — it's institutional backing (Fort Knox, not a bank)
+- Prevents infinite money printing: can't create credits beyond reserve backing
+- All reserve transactions numerically logged and auditable
 
 ---
 
@@ -452,10 +467,12 @@ All core systems built, wired, and compiling:
 - **Property**: Tile claim system — agents own slots, not tiles. Required for building. Purchase, sell, rent.
 - **Contracts**: Work relations (full-time, gig, freelance — weighted labor for LD axis), rental, trade, subscriptions, partnerships. Wages, rent, breach detection.
 - **Labor Market**: Business owners hire unemployed agents. Wages flow. Robot displacement triggers LD axis. Weighted labor count prevents gig economy gaming.
-- **Communication**: Observable message log — agent-to-agent, agent-to-GM, GM internal reasoning, multi-turn conversations with information boundaries
+- **Subsistence**: Food + shelter requirements with grace period, graduated consequences, incapacitation at low satisfaction (survival mode)
+- **Commodity Reserve**: Physical resource backing for credits, GM-managed yearly, 20% minimum ratio, agents can't access directly
+- **Communication**: Observable message log — agent-to-agent, agent-to-GM, GM internal reasoning, multi-turn conversations with information boundaries. Auto-refreshing panel with agent filter, channel filter, full message detail view.
 - **Governance**: Multi-government, voting lifecycle, judicial disputes, agent migration
-- **Metrics/Output**: CSV metrics, comprehensive JSON snapshots (agents + infrastructure + services + contracts + property + LLM costs + risk events + communication), full communication transcript
-- **Visualization**: JavaFX hex renderer with agent dots, dashboard charts, inspector panel, communication log tab, live console with pause/clear
+- **Metrics/Output**: CSV metrics, comprehensive JSON snapshots (agents + infrastructure + services + contracts + property + reserve state + LLM costs + risk events + communication), full communication transcript
+- **Visualization**: JavaFX hex renderer with agent dots, auto-refreshing dashboard charts, inspector panel, threaded communication log, live console with pause/clear/copy
 
 ### Documentation
 
