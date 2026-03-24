@@ -37,7 +37,7 @@ agents:
   perceptionRadius: 7
 
 robots:
-  initialCost: 10000
+  initialCost: 800
   costDecayRate: 0.05
   initialEfficiency: 1.2
   efficiencyGrowthRate: 0.03
@@ -65,7 +65,7 @@ llm:
 simulation:
   ticksPerYear: 12
   totalYears: 10
-  snapshotInterval: 12
+  snapshotInterval: 3
   metricsInterval: 1
 
 events:

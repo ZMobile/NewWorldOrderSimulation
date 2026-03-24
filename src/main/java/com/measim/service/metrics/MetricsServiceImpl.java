@@ -45,11 +45,31 @@ public class MetricsServiceImpl implements MetricsService {
         long totalTx = marketDao.getAllMarkets().stream()
                 .mapToLong(m -> m.transactionHistory().size()).sum();
 
-        metricsDao.record(new MetricsDao.TickMetrics(
+        var metrics = new MetricsDao.TickMetrics(
                 currentTick, gini, satisfaction.getAverage(),
                 satisfaction.getMax() - satisfaction.getMin(),
                 envHealth, creditFlowService.ubiPool(), totalRobots, avgCredits,
-                totalTx, agents.size()));
+                totalTx, agents.size());
+        metricsDao.record(metrics);
+
+        // Live write: append to file every tick so data is available immediately
+        try {
+            Path livePath = Path.of("output/metrics_live.csv");
+            if (currentTick == 1) {
+                Files.createDirectories(livePath.getParent());
+                Files.writeString(livePath,
+                        "tick,gini,satisfaction_mean,satisfaction_spread,env_health,ubi_pool,total_robots,avg_credits,total_transactions,agent_count\n");
+            }
+            Files.writeString(livePath,
+                    String.format("%d,%.4f,%.4f,%.4f,%.4f,%.2f,%d,%.2f,%d,%d%n",
+                            metrics.tick(), metrics.giniCoefficient(), metrics.satisfactionMean(),
+                            metrics.satisfactionSpread(), metrics.environmentalHealth(),
+                            metrics.ubiPoolSize(), metrics.totalRobots(), metrics.averageCredits(),
+                            metrics.totalTransactions(), metrics.agentCount()),
+                    java.nio.file.StandardOpenOption.APPEND, java.nio.file.StandardOpenOption.CREATE);
+        } catch (Exception e) {
+            // Don't crash the simulation for a metrics write failure
+        }
     }
 
     @Override

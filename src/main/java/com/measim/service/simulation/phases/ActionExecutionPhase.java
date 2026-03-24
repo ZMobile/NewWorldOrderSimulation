@@ -325,18 +325,19 @@ public class ActionExecutionPhase implements TickPhase {
         var profile = agent.identity();
         var state = agent.state();
 
-        // Business owners (those with infrastructure or high credits) try to hire
-        boolean isBusinessOwner = state.employmentStatus() == EmploymentStatus.BUSINESS_OWNER
-                || state.ownedRobots() > 0 || state.credits() > 2000;
+        // Hire only when you have something that NEEDS workers:
+        // infrastructure to operate, services to staff, or robots to manage
+        boolean hasBusinessNeed = !propertyService.getAgentProperties(agent.id()).isEmpty()
+                || state.ownedRobots() > 0
+                || state.employmentStatus() == EmploymentStatus.BUSINESS_OWNER;
 
-        if (isBusinessOwner && profile.ambition() > 0.4) {
-            // Check if we already have enough workers
+        if (hasBusinessNeed && state.credits() > 200) {
             var existingWorkers = contractService.getWorkRelationsOf(agent.id());
             int currentWorkers = existingWorkers.size();
 
-            // Hire if we have fewer workers than robots (need someone to manage them)
-            // or if we have productive infrastructure
-            if (currentWorkers < Math.max(1, state.ownedRobots())) {
+            // Hire if: have infrastructure/robots but no workers yet
+            int workersNeeded = Math.max(1, state.ownedRobots()) - currentWorkers;
+            if (workersNeeded > 0) {
                 // Find unemployed agents nearby
                 for (Agent candidate : agentDao.getAllAgents()) {
                     if (candidate.id().equals(agent.id())) continue;
