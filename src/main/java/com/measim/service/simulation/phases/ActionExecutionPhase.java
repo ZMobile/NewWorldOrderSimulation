@@ -123,8 +123,7 @@ public class ActionExecutionPhase implements TickPhase {
 
             if (action instanceof AgentAction.BuildInfrastructure
                     || action instanceof AgentAction.CreateService
-                    || action instanceof AgentAction.FreeFormAction
-                    || action instanceof AgentAction.ClaimProperty) {
+                    || action instanceof AgentAction.FreeFormAction) {
                 gmActions.add(java.util.Map.entry(agent, action));
             } else {
                 localActions.add(java.util.Map.entry(agent, action));
@@ -498,14 +497,15 @@ public class ActionExecutionPhase implements TickPhase {
                         0.5, null, 0));
             }
             case AgentAction.ClaimProperty claim -> {
-                // Property claims require:
-                // 1. Physical proximity (must be at or adjacent to the tile)
-                // 2. Available slots
-                // 3. GM-assessed price (based on terrain, resources, location)
+                // Nature GM quick check: physically possible?
+                // - Must be within 2 tiles (can't claim across map)
+                // - Slots must be available
+                // - Agent must have credits for the price
+                // Nature GM does NOT judge suitability — agents are free to make bad choices
                 int distance = agent.state().location().distanceTo(claim.tile());
                 if (distance > 2) {
                     agent.addMemory(new MemoryEntry(currentTick, "PROPERTY",
-                            "Cannot claim (" + claim.tile().q() + "," + claim.tile().r() + "): too far away (distance " + distance + ")",
+                            "Cannot claim (" + claim.tile().q() + "," + claim.tile().r() + "): too far (distance " + distance + ")",
                             0.3, null, 0));
                     break;
                 }
@@ -516,37 +516,24 @@ public class ActionExecutionPhase implements TickPhase {
                             0.3, null, 0));
                     break;
                 }
-                // GM evaluates the claim — sets price based on actual tile value
-                // This is a Governance GM action using tool inspection
-                var resolution = gameMasterService.resolveFreeFormAction(
-                        agent.id(),
-                        "Register property claim on tile (" + claim.tile().q() + "," + claim.tile().r() + "). " +
-                        "Assess fair price based on terrain, resources, and location. Agent has " +
-                        String.format("%.0f", agent.state().credits()) + " credits.",
-                        agent.state().credits() * 0.3, currentTick);
-                if (resolution.success()) {
-                    double price = resolution.creditCost() > 0 ? resolution.creditCost()
-                            : propertyService.getClaimBasePrice(claim.tile());
-                    if (agent.state().credits() >= price) {
-                        var claimResult = propertyService.purchaseClaim(agent.id(), claim.tile(), 1, currentTick);
-                        if (claimResult.isPresent()) {
-                            agent.addMemory(new MemoryEntry(currentTick, "PROPERTY",
-                                    "Claimed property at (" + claim.tile().q() + "," + claim.tile().r() + ") for " +
-                                    String.format("%.0f", price) + " credits. " + resolution.narrative(),
-                                    0.7, null, -price));
-                            commService.sendAgentMessage(agent.id(), "ALL_AT_TILE",
-                                    "Registered property claim at (" + claim.tile().q() + "," + claim.tile().r() + ")",
-                                    com.measim.model.communication.Message.MessageType.INFORMATION_SHARE, currentTick);
-                        }
-                    } else {
-                        agent.addMemory(new MemoryEntry(currentTick, "PROPERTY",
-                                "Cannot afford claim at (" + claim.tile().q() + "," + claim.tile().r() + "): " +
-                                "price " + String.format("%.0f", price) + ", have " + String.format("%.0f", agent.state().credits()),
-                                0.4, null, 0));
-                    }
-                } else {
+                // Governance GM sets price — based on tile value (resources, settlement, demand)
+                double price = propertyService.getClaimBasePrice(claim.tile());
+                if (agent.state().credits() < price) {
                     agent.addMemory(new MemoryEntry(currentTick, "PROPERTY",
-                            "Claim denied: " + resolution.narrative(), 0.4, null, 0));
+                            "Cannot afford claim at (" + claim.tile().q() + "," + claim.tile().r() + "): " +
+                            "price " + String.format("%.0f", price) + ", have " + String.format("%.0f", agent.state().credits()),
+                            0.4, null, 0));
+                    break;
+                }
+                var claimResult = propertyService.purchaseClaim(agent.id(), claim.tile(), 1, currentTick);
+                if (claimResult.isPresent()) {
+                    agent.addMemory(new MemoryEntry(currentTick, "PROPERTY",
+                            "Claimed property at (" + claim.tile().q() + "," + claim.tile().r() + ") for " +
+                            String.format("%.0f", price) + " credits",
+                            0.7, null, -price));
+                    commService.sendAgentMessage(agent.id(), "ALL_AT_TILE",
+                            "Registered property claim at (" + claim.tile().q() + "," + claim.tile().r() + ")",
+                            com.measim.model.communication.Message.MessageType.INFORMATION_SHARE, currentTick);
                 }
             }
             case AgentAction.ExtractResource ignored -> {}
