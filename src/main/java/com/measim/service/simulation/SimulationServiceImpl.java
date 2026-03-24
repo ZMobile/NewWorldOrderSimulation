@@ -146,12 +146,12 @@ public class SimulationServiceImpl implements SimulationService {
 
             for (TickPhase phase : orderedPhases) {
                 long phaseStart = System.currentTimeMillis();
+                System.out.printf("  > %s...%n", phase.name());
+                System.out.flush();
                 phase.execute(currentTick);
                 long elapsed = System.currentTimeMillis() - phaseStart;
-                if (elapsed > 1000) {
-                    System.out.printf("  [%s] took %.1fs%n", phase.name(), elapsed / 1000.0);
-                    System.out.flush();
-                }
+                System.out.printf("  [%s] %.1fs%n", phase.name(), elapsed / 1000.0);
+                System.out.flush();
             }
 
             eventBus.publish(new EventBus.TickCompleted(currentTick));

@@ -148,7 +148,7 @@ public class LlmDaoImpl implements LlmDao {
                     .header("x-api-key", config.apiKey())
                     .header("anthropic-version", ANTHROPIC_VERSION)
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                    .timeout(Duration.ofSeconds(60))
+                    .timeout(Duration.ofSeconds(30))
                     .build();
 
             return httpClient.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())

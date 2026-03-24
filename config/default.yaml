@@ -56,7 +56,7 @@ llm:
   agentModel: "claude-sonnet-4-6"
   complexModel: "claude-opus-4-6"       # Used for coherence audit + world events (yearly, ~$3 total)
   gameMasterModel: "claude-sonnet-4-6"  # Used for routine GM: infrastructure eval, novel actions, research
-  maxAgentCallsPerTick: 50
+  maxAgentCallsPerTick: 20
   maxGameMasterCallsPerTick: 20
   totalBudgetUsd: 50.0
   cacheEnabled: true
