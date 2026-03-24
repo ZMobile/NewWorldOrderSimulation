@@ -123,7 +123,7 @@ You don't deploy a new operating system to production without testing it. MeaSim
 - **Proximity-based trade** — no built-in exchange; trade is agent-to-agent or through agent-created marketplace services
 - **Robot labor** with configurable automation curves
 - **Single MEAS protocol zone** — one set of rules, emergent governance built by agents as services
-- **Agent messaging** — private messages (SEND_MESSAGE) and tile-local broadcasts (BROADCAST) within communication range, enabling negotiation, coalition building, and information sharing
+- **Agent messaging** — private messages (SEND_MESSAGE) and tile-local broadcasts (BROADCAST) within communication range, enabling negotiation, coalition building, and information sharing. Up to 4 micro-rounds per tick allow full conversations (see→message→negotiate→offer→accept) within a single tick.
 - **Technology discovery** through a Game Master LLM that adjudicates research and maintains world coherence
 
 ### The 18 Archetypes: Adversarial Testing by Design
@@ -332,7 +332,7 @@ Service categories: financial, logistics, healthcare, education, legal, security
 |---|-------|------|-------------|
 | 1 | Perception | No | Agents observe environment, update risk perceptions from events |
 | 2 | Decision | **Tier 1+2** | Deterministic for all agents, then LLM escalation for eligible agents (20-50% per tick) |
-| 3 | Action | Partial | Deterministic physics (autoExtract→autoProduce) + LLM-driven actions: trade (offer/accept/reject/negotiate), messaging, contract negotiation, infrastructure proposals + GM eval |
+| 3 | Action | Partial | Deterministic physics (autoExtract→autoProduce) + LLM-driven actions with up to 4 micro-rounds per tick (see→message→negotiate→offer→accept): trade, messaging, contract negotiation, infrastructure proposals + GM eval |
 | 4 | Market | No | Proximity-based trades resolve, MEAS modifiers applied, credits flow |
 | 5 | Contracts | No | Wages paid, rent collected, service subscriptions, breach detection |
 | 6 | Scoring | No | Score vectors recomputed, modifiers updated, audit trail |
@@ -501,7 +501,7 @@ All core systems built, wired, and compiling:
 - **Commodity Reserve**: Physical resource backing for credits, GM-managed yearly, 20% minimum ratio, agents can't access directly
 - **Communication**: Observable message log — agent-to-agent, agent-to-GM, GM internal reasoning, multi-turn conversations with information boundaries. Auto-refreshing panel with filter options (All, All Agents, GAME_MASTER, individual agents), Ctrl+F search, auto-scroll toggle, full message detail view. Dynamic communication range (adjacent tiles without phones; infrastructure extends range; GM enforces tech consistency).
 - **Governance**: Minimal protocol layer (Governance GM for reserve/audit/infrastructure), emergent services for courts/police/regulation. Single zone, no jurisdictions. Contracts are binding, property is registered.
-- **Metrics/Output**: CSV metrics, comprehensive JSON snapshots (agents + infrastructure + services + contracts + property + reserve state + LLM costs + risk events + communication), full communication transcript
+- **Metrics/Output**: CSV metrics, comprehensive JSON snapshots (agents + infrastructure + services + contracts + property + reserve state + LLM costs + risk events + communication), full communication transcript. Output files (metrics, snapshots, communication log) are cleared on each run.
 - **Visualization**: JavaFX hex renderer with agent dots, auto-refreshing dashboard charts, inspector panel, threaded communication log with filter options (All, All Agents, GAME_MASTER, individual agents), Ctrl+F search, auto-scroll toggle, live console with pause/clear/copy
 
 ### Documentation

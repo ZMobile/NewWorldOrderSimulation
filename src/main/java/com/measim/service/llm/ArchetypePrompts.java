@@ -45,6 +45,9 @@ public final class ArchetypePrompts {
                   Trade and contracts only work with agents within communication range.
                   Your archetype should guide HOW you communicate — an Exploiter might deceive,
                   a Cooperator might organize, a Politician might campaign.
+                - Each tick has up to 4 interaction rounds. After your initial action, you get follow-up calls
+                  to respond to any messages or offers you receive. A full negotiation (message → response →
+                  offer → accept) can complete within one tick — you don't need to wait months to close a deal.
 
                 Respond with exactly ONE action as JSON. You may use a STANDARD action or a FREE-FORM action.
 
