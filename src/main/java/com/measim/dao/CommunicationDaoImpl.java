@@ -9,8 +9,8 @@ import java.util.*;
 @Singleton
 public class CommunicationDaoImpl implements CommunicationDao {
 
-    private final List<Message> messages = new ArrayList<>();
-    private final Map<String, Conversation> conversations = new LinkedHashMap<>();
+    private final List<Message> messages = java.util.Collections.synchronizedList(new ArrayList<>());
+    private final Map<String, Conversation> conversations = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Override
     public void log(Message message) { messages.add(message); }

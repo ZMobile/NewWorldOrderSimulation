@@ -36,12 +36,12 @@ public class AgentState {
         this.employmentStatus = EmploymentStatus.UNEMPLOYED;
         this.ownedBusinessIds = new ArrayList<>();
         this.ownedRobots = 0;
-        this.inventory = new HashMap<>();
+        this.inventory = new java.util.concurrent.ConcurrentHashMap<>();
         this.location = startLocation;
         this.satisfaction = 0.5;
         this.domainTwoCompliance = true;
-        this.experienceTicks = new HashMap<>();
-        this.experienceSuccesses = new HashMap<>();
+        this.experienceTicks = new java.util.concurrent.ConcurrentHashMap<>();
+        this.experienceSuccesses = new java.util.concurrent.ConcurrentHashMap<>();
         this.totalRevenue = 0;
         this.totalEmissions = 0;
         this.humanEmployees = 0;

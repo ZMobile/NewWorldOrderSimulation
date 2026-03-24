@@ -10,8 +10,8 @@ import java.util.*;
 @Singleton
 public class PropertyDaoImpl implements PropertyDao {
 
-    private final Map<HexCoord, TilePropertyStatus> tileStatuses = new HashMap<>();
-    private final Map<String, TileClaim> claims = new LinkedHashMap<>();
+    private final Map<HexCoord, TilePropertyStatus> tileStatuses = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, TileClaim> claims = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Override
     public void initializeTile(TilePropertyStatus status) { tileStatuses.put(status.tile(), status); }

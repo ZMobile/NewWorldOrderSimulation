@@ -12,19 +12,19 @@ import java.util.stream.Collectors;
 @Singleton
 public class InfrastructureDaoImpl implements InfrastructureDao {
 
-    private final Map<String, Infrastructure> instances = new LinkedHashMap<>();
-    private final Map<String, InfrastructureType> types = new LinkedHashMap<>();
+    private final Map<String, Infrastructure> instances = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, InfrastructureType> types = new java.util.concurrent.ConcurrentHashMap<>();
 
     // Spatial indices for fast lookup
-    private final Map<HexCoord, List<String>> byLocation = new HashMap<>();
-    private final Map<HexCoord, List<String>> byConnection = new HashMap<>();
+    private final Map<HexCoord, List<String>> byLocation = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<HexCoord, List<String>> byConnection = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Override
     public void place(Infrastructure infra) {
         instances.put(infra.id(), infra);
-        byLocation.computeIfAbsent(infra.location(), k -> new ArrayList<>()).add(infra.id());
+        byLocation.computeIfAbsent(infra.location(), k -> java.util.Collections.synchronizedList(new ArrayList<>())).add(infra.id());
         if (infra.connectedTo() != null) {
-            byConnection.computeIfAbsent(infra.connectedTo(), k -> new ArrayList<>()).add(infra.id());
+            byConnection.computeIfAbsent(infra.connectedTo(), k -> java.util.Collections.synchronizedList(new ArrayList<>())).add(infra.id());
         }
     }
 
