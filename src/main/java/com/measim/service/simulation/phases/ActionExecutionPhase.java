@@ -377,6 +377,30 @@ public class ActionExecutionPhase implements TickPhase {
             case AgentAction.ConsumeService consume -> {
                 agentServiceManager.consumeService(agent.id(), consume.serviceInstanceId(), currentTick);
             }
+            case AgentAction.FreeFormAction freeForm -> {
+                var resolution = gameMasterService.resolveFreeFormAction(
+                        agent.id(), freeForm.description(), freeForm.creditBudget(), currentTick);
+                if (resolution.success()) {
+                    agent.state().spendCredits(resolution.creditCost());
+                    agent.state().addCredits(resolution.creditGain());
+                    agent.state().setSatisfaction(agent.state().satisfaction() + resolution.satisfactionChange());
+                    for (var entry : resolution.inventoryChanges().entrySet()) {
+                        if (entry.getValue() > 0) agent.state().addToInventory(
+                                com.measim.model.economy.ItemType.custom(entry.getKey()), entry.getValue());
+                        else agent.state().removeFromInventory(
+                                com.measim.model.economy.ItemType.custom(entry.getKey()), -entry.getValue());
+                    }
+                    agent.state().addExperience(resolution.experienceDomain());
+                    agent.state().recordSuccess(resolution.experienceDomain());
+                    agent.addMemory(new MemoryEntry(currentTick, "ACTION",
+                            resolution.narrative(), 0.7, null, resolution.creditGain() - resolution.creditCost()));
+                } else {
+                    agent.state().spendCredits(resolution.creditCost());
+                    agent.state().addExperience(resolution.experienceDomain());
+                    agent.addMemory(new MemoryEntry(currentTick, "ACTION",
+                            "Failed: " + resolution.narrative(), 0.5, null, -resolution.creditCost()));
+                }
+            }
             case AgentAction.ExtractResource ignored -> {}
             case AgentAction.Produce ignored -> {}
             case AgentAction.PlaceSellOrder ignored -> {}

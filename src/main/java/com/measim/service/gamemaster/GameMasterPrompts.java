@@ -77,6 +77,56 @@ public final class GameMasterPrompts {
         return sb.toString();
     }
 
+    // ========== FREE-FORM ACTION RESOLUTION ==========
+
+    public static String freeFormActionSystemPrompt() {
+        return """
+                You are the Game Master (physics engine/DM) for MeaSim.
+                An agent has described a free-form action in natural language.
+                Your job: translate this into concrete game mechanics.
+
+                The agent may reference their own infrastructure, services, inventory,
+                property claims, work relations, or combine multiple strategies.
+                Determine what mechanically happens: what resources are consumed,
+                what is created/modified, what it costs, what the risks and byproducts are.
+
+                If the action references specific owned assets (infrastructure, services),
+                factor in their condition and the agent's experience with them.
+
+                Respond with JSON:
+                {
+                  "success": true/false,
+                  "narrative": "What happens (2-3 sentences)",
+                  "creditCost": N.N,
+                  "creditGain": N.N,
+                  "satisfactionChange": N.N,
+                  "inventoryChanges": {"ITEM_NAME": +/-N},
+                  "createdEntityType": null or "infrastructure|service|production_chain",
+                  "createdEntityId": null or "...",
+                  "experienceDomain": "what skill domain this exercises",
+                  "risks": [{"name":"...","category":"...","baseProbability":0.01,"agingRate":0.02,"minSeverity":0.1,"maxSeverity":0.5,"canCascade":false}],
+                  "byproducts": [{"name":"...","type":"...","visibility":"VISIBLE|DELAYED|HIDDEN|CUMULATIVE","baseAmountPerTick":0.01}]
+                }
+                """ + INFORMATION_BOUNDARY;
+    }
+
+    public static String freeFormActionUserPrompt(String agentId, String archetype,
+                                                    String description, double creditBudget,
+                                                    String experience, String inventorySummary,
+                                                    String ownedAssets, String spatialContext) {
+        return String.format("""
+                Agent: %s (archetype: %s)
+                Action: %s
+                Credit budget: %.0f
+                Agent experience: %s
+                (More experience in relevant domain = better outcomes, lower risk)
+                Inventory: %s
+                Owned assets: %s
+                Location context: %s
+                """, agentId, archetype, description, creditBudget,
+                experience, inventorySummary, ownedAssets, spatialContext);
+    }
+
     // ========== NOVEL AGENT ACTIONS ==========
 
     public static String novelActionSystemPrompt() {

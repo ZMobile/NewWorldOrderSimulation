@@ -33,6 +33,29 @@ public interface GameMasterService {
      */
     Optional<InfrastructureType> evaluateInfrastructureProposal(InfrastructureProposal proposal, int currentTick);
 
+    // --- Free-form Action Resolution ---
+    /**
+     * Agent describes what they want to do in natural language.
+     * GM translates into game mechanics: what changes, what it costs, what risks/byproducts.
+     * Returns structured resolution the engine can apply.
+     */
+    FreeFormResolution resolveFreeFormAction(String agentId, String description,
+                                              double creditBudget, int currentTick);
+
+    record FreeFormResolution(
+            boolean success,
+            String narrative,
+            double creditCost,
+            double creditGain,
+            double satisfactionChange,
+            java.util.Map<String, Integer> inventoryChanges,
+            String createdEntityType,  // "infrastructure", "service", "production_chain", or null
+            String createdEntityId,    // if something was created
+            java.util.List<com.measim.model.risk.Risk> risks,
+            java.util.List<com.measim.model.externality.Byproduct> byproducts,
+            String experienceDomain
+    ) {}
+
     // --- Novel Agent Actions ---
     void submitNovelAction(NovelAction action);
     List<WorldEvent> adjudicateNovelActions(int currentTick, WorldState worldState);

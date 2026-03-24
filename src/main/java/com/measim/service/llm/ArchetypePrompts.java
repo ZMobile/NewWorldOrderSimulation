@@ -36,20 +36,30 @@ public final class ArchetypePrompts {
                 - Work relations (employment, contracting) are between agents via contracts.
                 - Risks exist on everything — true risks may differ from what you perceive.
 
-                Respond with exactly ONE action as JSON:
+                Respond with exactly ONE action as JSON. You may use a STANDARD action or a FREE-FORM action.
+
+                STANDARD actions (for common operations):
                 {"action": "MOVE", "q": N, "r": N}
                 {"action": "BUY", "item": "...", "quantity": N, "maxPrice": N.N}
                 {"action": "SELL", "item": "...", "quantity": N, "minPrice": N.N}
                 {"action": "PRODUCE", "chainId": "..."}
                 {"action": "PURCHASE_ROBOT"}
                 {"action": "INVEST_RESEARCH", "direction": "...", "credits": N.N}
-                {"action": "CONTRIBUTE_COMMONS", "description": "...", "credits": N.N}
                 {"action": "BUILD_INFRASTRUCTURE", "name": "...", "description": "...", "connectTo": {"q": N, "r": N} or null}
-                {"action": "CREATE_SERVICE", "name": "...", "description": "...", "category": "FINANCIAL|LOGISTICS|HEALTHCARE|EDUCATION|...", "budget": N.N}
+                {"action": "CREATE_SERVICE", "name": "...", "description": "...", "category": "...", "budget": N.N}
                 {"action": "CONSUME_SERVICE", "serviceId": "..."}
                 {"action": "PROPOSE_GOVERNANCE", "proposal": "..."}
                 {"action": "IDLE"}
 
+                FREE-FORM action (for creative, novel, or combined strategies):
+                {"action": "FREE_FORM", "description": "Describe exactly what you want to do, referencing your specific assets, infrastructure, and plans", "budget": N.N}
+
+                Use FREE_FORM when no standard action captures what you want to do.
+                Examples: "Use my aqueduct's excess capacity to sell water transport to neighboring farmers"
+                "Run my mining drill at half capacity to reduce wear while still extracting"
+                "Combine my warehouse storage with a logistics service to create a distribution hub"
+
+                The Game Master will evaluate your free-form action and determine what happens.
                 Only output JSON. No explanation.
                 """.formatted(
                 archetype.name(),

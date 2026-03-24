@@ -45,8 +45,24 @@ public final class LlmResponseParser {
                         root.path("description").asText("public goods"),
                         root.path("credits").asDouble(50));
                 case "PURCHASE_ROBOT" -> new AgentAction.PurchaseRobot();
+                case "BUILD_INFRASTRUCTURE" -> new AgentAction.BuildInfrastructure(
+                        root.path("name").asText("Proposed infrastructure"),
+                        root.has("connectTo") && !root.path("connectTo").isNull()
+                                ? new HexCoord(root.path("connectTo").path("q").asInt(), root.path("connectTo").path("r").asInt())
+                                : null,
+                        null);
+                case "CREATE_SERVICE" -> new AgentAction.CreateService(
+                        root.path("name").asText("Proposed service"),
+                        root.path("description").asText(""),
+                        root.path("category").asText("CUSTOM"),
+                        null, root.path("budget").asDouble(100));
+                case "CONSUME_SERVICE" -> new AgentAction.ConsumeService(
+                        root.path("serviceId").asText());
                 case "PROPOSE_GOVERNANCE" -> new AgentAction.ProposeGovernance(
                         root.path("proposal").asText());
+                case "FREE_FORM" -> new AgentAction.FreeFormAction(
+                        root.path("description").asText(""),
+                        root.path("budget").asDouble(100));
                 default -> new AgentAction.Idle();
             };
         } catch (Exception e) {

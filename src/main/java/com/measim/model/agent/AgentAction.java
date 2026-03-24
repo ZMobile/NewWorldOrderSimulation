@@ -20,4 +20,14 @@ public sealed interface AgentAction {
     record BuildInfrastructure(String typeId, HexCoord location, HexCoord connectTo) implements AgentAction {}
     record CreateService(String name, String description, String category, HexCoord location, double budget) implements AgentAction {}
     record ConsumeService(String serviceInstanceId) implements AgentAction {}
+
+    /**
+     * Free-form action: agent describes in natural language what they want to do.
+     * The GM translates this into game mechanics (modifying existing entities,
+     * creating new ones, combining multiple mechanical effects).
+     *
+     * Used for LLM-escalated strategic decisions where hardcoded action types
+     * are too rigid. The deterministic pipeline still handles routine actions.
+     */
+    record FreeFormAction(String description, double creditBudget) implements AgentAction {}
 }

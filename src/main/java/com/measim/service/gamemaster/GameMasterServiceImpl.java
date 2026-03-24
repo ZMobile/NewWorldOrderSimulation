@@ -109,6 +109,106 @@ public class GameMasterServiceImpl implements GameMasterService {
         }
     }
 
+    // ========== FREE-FORM ACTION RESOLUTION ==========
+
+    @Override
+    public FreeFormResolution resolveFreeFormAction(String agentId, String description,
+                                                     double creditBudget, int currentTick) {
+        var agent = agentDao.getAgent(agentId);
+        if (agent == null) return new FreeFormResolution(false, "Agent not found", 0, 0, 0,
+                Map.of(), null, null, List.of(), List.of(), "unknown");
+
+        commService.logThought(agentId,
+                "Free-form action: " + description + " (budget: " + String.format("%.0f", creditBudget) + ")",
+                Message.Channel.AGENT_INTERNAL, currentTick);
+
+        if (!llmService.isAvailable()) {
+            return resolveFreeFormDeterministic(agent, description, creditBudget, currentTick);
+        }
+
+        try {
+            String experience = agent.state().experienceSummary();
+            String archetype = agent.identity().archetype().name();
+            String inventory = agent.state().inventory().toString();
+            String assets = buildOwnedAssetsSummary(agentId);
+            String spatial = "At tile (" + agent.state().location().q() + "," + agent.state().location().r() + ")";
+
+            String systemPrompt = GameMasterPrompts.freeFormActionSystemPrompt();
+            String userPrompt = GameMasterPrompts.freeFormActionUserPrompt(
+                    agentId, archetype, description, creditBudget,
+                    experience, inventory, assets, spatial);
+
+            commService.logThought(GM_ID, "Resolving free-form action from " + agentId + ": " + description,
+                    Message.Channel.GM_INTERNAL, currentTick);
+
+            LlmResponse response = llmService.queryGameMaster(systemPrompt, userPrompt).join();
+            commService.logThought(GM_ID, response.content(), Message.Channel.GM_INTERNAL, currentTick);
+
+            return parseFreeFormResolution(response.content(), agentId, description, creditBudget, currentTick);
+        } catch (Exception e) {
+            return resolveFreeFormDeterministic(agent, description, creditBudget, currentTick);
+        }
+    }
+
+    private FreeFormResolution resolveFreeFormDeterministic(com.measim.model.agent.Agent agent,
+                                                             String description, double creditBudget,
+                                                             int currentTick) {
+        // Simple heuristic: success based on budget and experience
+        double successChance = Math.min(0.7, creditBudget / 1000.0);
+        boolean success = fallbackRandom.nextDouble() < successChance;
+        double cost = creditBudget * (success ? 0.6 : 0.3);
+        double gain = success ? creditBudget * 0.3 : 0;
+        String domain = description.length() > 20 ? description.substring(0, 20) : description;
+
+        return new FreeFormResolution(success,
+                success ? "Action succeeded: " + description : "Action failed: " + description,
+                cost, gain, success ? 0.02 : -0.02, Map.of(), null, null,
+                List.of(), List.of(), domain);
+    }
+
+    private FreeFormResolution parseFreeFormResolution(String content, String agentId,
+                                                        String description, double creditBudget,
+                                                        int currentTick) {
+        try {
+            String json = stripMarkdown(content);
+            JsonNode root = MAPPER.readTree(json);
+            boolean success = root.path("success").asBoolean(false);
+
+            Map<String, Integer> invChanges = new HashMap<>();
+            JsonNode invNode = root.path("inventoryChanges");
+            if (invNode.isObject()) {
+                invNode.fields().forEachRemaining(e -> invChanges.put(e.getKey(), e.getValue().asInt(0)));
+            }
+
+            return new FreeFormResolution(
+                    success,
+                    root.path("narrative").asText(description),
+                    root.path("creditCost").asDouble(0),
+                    root.path("creditGain").asDouble(0),
+                    root.path("satisfactionChange").asDouble(0),
+                    invChanges,
+                    root.path("createdEntityType").asText(null),
+                    root.path("createdEntityId").asText(null),
+                    List.of(), // TODO: parse risks from response
+                    List.of(), // TODO: parse byproducts from response
+                    root.path("experienceDomain").asText("general"));
+        } catch (Exception e) {
+            return resolveFreeFormDeterministic(agentDao.getAgent(agentId), description, creditBudget, currentTick);
+        }
+    }
+
+    private String buildOwnedAssetsSummary(String agentId) {
+        StringBuilder sb = new StringBuilder();
+        var infras = infraDao.getByOwner(agentId);
+        if (!infras.isEmpty()) {
+            sb.append("Infrastructure: ");
+            for (var i : infras) sb.append(i.type().name()).append(" (condition ").append(String.format("%.0f%%", i.condition() * 100)).append("), ");
+        }
+        // Services would be added here when ServiceDao has getByOwner
+        if (sb.isEmpty()) sb.append("None");
+        return sb.toString();
+    }
+
     // ========== NOVEL AGENT ACTIONS ==========
 
     @Override
