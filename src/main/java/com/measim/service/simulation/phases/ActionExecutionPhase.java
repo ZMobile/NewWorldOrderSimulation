@@ -51,6 +51,12 @@ public class ActionExecutionPhase implements TickPhase {
     private final ContractService contractService;
     private final com.measim.service.trade.TradeService tradeService;
     private final com.measim.service.trade.CommunicationRangeService commRange;
+
+    // Pending job/contract offers — maps "offererAgentId:targetAgentId" to offer details
+    record PendingJobOffer(String offererId, String targetId, double wagesPerTick, int durationTicks, String description, int tick) {}
+    record PendingContractOffer(String proposerId, String targetId, String contractType, double valuePerTick, int durationTicks, String terms, int tick) {}
+    private final java.util.concurrent.ConcurrentHashMap<String, PendingJobOffer> pendingJobOffers = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentHashMap<String, PendingContractOffer> pendingContractOffers = new java.util.concurrent.ConcurrentHashMap<>();
     private final com.measim.service.communication.CommunicationService commService;
     private final com.measim.service.economy.CreditFlowService creditFlowService;
     private final SimulationConfig config;
@@ -416,8 +422,14 @@ public class ActionExecutionPhase implements TickPhase {
             case AgentAction.OfferJob offer -> {
                 var target = agentDao.getAgent(offer.targetAgentId());
                 if (target != null && commRange.canCommunicate(agent, target)) {
-                    String offerMsg = String.format("JOB_OFFER: %.1f credits/tick for %d ticks. %s",
-                            offer.wagesPerTick(), offer.durationTicks(), offer.description());
+                    // Store pending offer with actual terms
+                    String key = agent.id() + ":" + offer.targetAgentId();
+                    pendingJobOffers.put(key, new PendingJobOffer(
+                            agent.id(), offer.targetAgentId(), offer.wagesPerTick(),
+                            offer.durationTicks(), offer.description(), currentTick));
+
+                    String offerMsg = String.format("JOB_OFFER from %s: %.1f credits/tick for %d ticks. %s. Use {\"action\":\"ACCEPT_JOB\",\"offererAgent\":\"%s\"} to accept.",
+                            agent.id(), offer.wagesPerTick(), offer.durationTicks(), offer.description(), agent.id());
                     commService.sendAgentMessage(agent.id(), offer.targetAgentId(),
                             offerMsg, com.measim.model.communication.Message.MessageType.TRADE_PROPOSAL, currentTick);
                     agent.addMemory(new MemoryEntry(currentTick, "JOB_OFFER",
@@ -426,33 +438,41 @@ public class ActionExecutionPhase implements TickPhase {
                 }
             }
             case AgentAction.AcceptJob accept -> {
-                // Find the most recent job offer from this agent
                 var offerer = agentDao.getAgent(accept.offererAgentId());
                 if (offerer != null && commRange.canCommunicate(agent, offerer)) {
-                    // Look for matching offer in recent communications
-                    var recentOffers = agent.memory().getByType("JOB_OFFER_RECEIVED", 5);
-                    boolean hasOffer = agent.memory().getRecent(20).stream()
-                            .anyMatch(m -> m.description().contains("JOB_OFFER") && m.description().contains(accept.offererAgentId()));
+                    // Look up the actual pending offer terms
+                    String key = accept.offererAgentId() + ":" + agent.id();
+                    PendingJobOffer pending = pendingJobOffers.remove(key);
+                    double wages = pending != null ? pending.wagesPerTick() : 5.0;
+                    int duration = pending != null ? pending.durationTicks() : 12;
 
-                    // Create the work contract — default terms if no specific offer found
-                    double wages = 5.0; // default
-                    int duration = 12;
                     contractService.createContract(
                             com.measim.model.contract.Contract.ContractType.WORK_RELATION,
                             accept.offererAgentId(), agent.id(), wages, duration, currentTick,
                             java.util.Map.of("hoursPerTick", 1.0, "laborWeight", 1.0));
                     commService.sendAgentMessage(agent.id(), accept.offererAgentId(),
-                            "ACCEPTED your job offer.",
+                            "ACCEPTED job offer: " + wages + " credits/tick for " + duration + " ticks. Contract created.",
                             com.measim.model.communication.Message.MessageType.TRADE_RESPONSE, currentTick);
                     agent.addMemory(new MemoryEntry(currentTick, "CONTRACT",
-                            "Accepted job from " + accept.offererAgentId(), 0.6, accept.offererAgentId(), 0));
+                            "Accepted job from " + accept.offererAgentId() + " at " + wages + "/tick",
+                            0.6, accept.offererAgentId(), 0));
+                    offerer.addMemory(new MemoryEntry(currentTick, "CONTRACT",
+                            agent.id() + " accepted job at " + wages + "/tick",
+                            0.6, agent.id(), 0));
                 }
             }
             case AgentAction.ProposeContract proposal -> {
                 var target = agentDao.getAgent(proposal.targetAgentId());
                 if (target != null && commRange.canCommunicate(agent, target)) {
-                    String propMsg = String.format("CONTRACT_PROPOSAL: %s, %.1f credits/tick, %d ticks. Terms: %s",
-                            proposal.contractType(), proposal.valuePerTick(), proposal.durationTicks(), proposal.terms());
+                    // Store pending contract with actual terms
+                    String key = agent.id() + ":" + proposal.targetAgentId() + ":" + proposal.contractType();
+                    pendingContractOffers.put(key, new PendingContractOffer(
+                            agent.id(), proposal.targetAgentId(), proposal.contractType(),
+                            proposal.valuePerTick(), proposal.durationTicks(), proposal.terms(), currentTick));
+
+                    String propMsg = String.format("CONTRACT_PROPOSAL from %s: %s, %.1f credits/tick, %d ticks. Terms: %s. Use {\"action\":\"ACCEPT_CONTRACT\",\"proposerAgent\":\"%s\",\"contractType\":\"%s\"} to accept.",
+                            agent.id(), proposal.contractType(), proposal.valuePerTick(),
+                            proposal.durationTicks(), proposal.terms(), agent.id(), proposal.contractType());
                     commService.sendAgentMessage(agent.id(), proposal.targetAgentId(),
                             propMsg, com.measim.model.communication.Message.MessageType.TRADE_PROPOSAL, currentTick);
                     agent.addMemory(new MemoryEntry(currentTick, "CONTRACT_PROPOSAL",
@@ -463,6 +483,12 @@ public class ActionExecutionPhase implements TickPhase {
             case AgentAction.AcceptContract accept -> {
                 var proposer = agentDao.getAgent(accept.proposerAgentId());
                 if (proposer != null && commRange.canCommunicate(agent, proposer)) {
+                    // Look up actual pending offer terms
+                    String key = accept.proposerAgentId() + ":" + agent.id() + ":" + accept.contractType();
+                    PendingContractOffer pending = pendingContractOffers.remove(key);
+                    double value = pending != null ? pending.valuePerTick() : 5.0;
+                    int duration = pending != null ? pending.durationTicks() : 12;
+
                     var type = switch (accept.contractType().toUpperCase()) {
                         case "WORK_RELATION" -> com.measim.model.contract.Contract.ContractType.WORK_RELATION;
                         case "RENTAL" -> com.measim.model.contract.Contract.ContractType.RENTAL;
@@ -470,14 +496,17 @@ public class ActionExecutionPhase implements TickPhase {
                         default -> com.measim.model.contract.Contract.ContractType.PARTNERSHIP;
                     };
                     contractService.createContract(type,
-                            accept.proposerAgentId(), agent.id(), 5.0, 12, currentTick,
+                            accept.proposerAgentId(), agent.id(), value, duration, currentTick,
                             java.util.Map.of());
                     commService.sendAgentMessage(agent.id(), accept.proposerAgentId(),
-                            "ACCEPTED your " + accept.contractType() + " proposal.",
+                            "ACCEPTED " + accept.contractType() + ": " + value + " credits/tick for " + duration + " ticks. Contract created.",
                             com.measim.model.communication.Message.MessageType.TRADE_RESPONSE, currentTick);
                     agent.addMemory(new MemoryEntry(currentTick, "CONTRACT",
-                            "Accepted " + accept.contractType() + " from " + accept.proposerAgentId(),
+                            "Accepted " + accept.contractType() + " from " + accept.proposerAgentId() + " at " + value + "/tick",
                             0.6, accept.proposerAgentId(), 0));
+                    proposer.addMemory(new MemoryEntry(currentTick, "CONTRACT",
+                            agent.id() + " accepted " + accept.contractType() + " at " + value + "/tick",
+                            0.6, agent.id(), 0));
                 }
             }
             case AgentAction.TerminateContract terminate -> {
