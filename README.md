@@ -343,7 +343,7 @@ Service categories: financial, logistics, healthcare, education, legal, security
 | 11 | Events | **Sonnet/Opus** | GM: research, novel actions, world events (Sonnet), yearly coherence audit (Opus) |
 | 12 | Measurement | No | Metrics collected, snapshots saved |
 
-**Model tiering**: Sonnet 4.6 for all routine operations (agent decisions, infrastructure eval, novel actions, world events). Opus 4.6 only for yearly coherence audits — these need holistic world understanding. ~10 Opus calls per 50-year sim. Tool conversations (multi-turn with world inspection) are estimated at 4x single-call cost for budget tracking.
+**Model tiering**: Sonnet 4.6 for all routine operations (agent decisions, infrastructure eval, novel actions, world events). Opus 4.6 only for yearly coherence audits. **Cost per tick (200 agents)**: ~$10-15 with full conversation system (agent decisions + multi-round conversations with up to 3 exchanges per pair + GM tool evaluations). Without conversation rounds: ~$0.40/tick. Scales roughly linearly with agent count. The simulation pauses when API credits run out — add more to continue.
 
 ### Property Rights & Labor Market
 
