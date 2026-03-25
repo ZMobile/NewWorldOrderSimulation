@@ -27,6 +27,8 @@ public class SimulationViewer extends Application {
     private static CommunicationDao communicationDao;
     private static com.measim.service.llm.BudgetPauseHandler budgetPauseHandler;
     private static com.measim.dao.LlmDao llmDao;
+    private static PlayerPanel playerPanel;
+    private static boolean playerMode = false;
 
     private HexRenderer hexRenderer;
     private InspectorPanel inspectorPanel;
@@ -53,6 +55,14 @@ public class SimulationViewer extends Application {
         llmDao = dao;
     }
 
+    public static void enablePlayerMode() {
+        playerMode = true;
+    }
+
+    public static PlayerPanel getPlayerPanel() {
+        return playerPanel;
+    }
+
     @Override
     public void start(Stage primaryStage) {
         hexRenderer = new HexRenderer();
@@ -76,6 +86,14 @@ public class SimulationViewer extends Application {
         Tab commsTab = new Tab("Communication Log", communicationPanel);
         commsTab.setClosable(false);
         rightTabs.getTabs().addAll(inspectorTab, commsTab);
+
+        if (playerMode) {
+            playerPanel = new PlayerPanel();
+            Tab playerTab = new Tab("Player", playerPanel);
+            playerTab.setClosable(false);
+            rightTabs.getTabs().add(0, playerTab); // first tab
+            rightTabs.getSelectionModel().select(playerTab);
+        }
         rightTabs.setPrefWidth(420);
 
         // Wire filter/search to update

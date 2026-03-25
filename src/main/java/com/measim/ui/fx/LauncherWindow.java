@@ -29,7 +29,8 @@ public class LauncherWindow extends Application {
     public record LaunchSettings(
             int agentCount, int worldWidth, int worldHeight,
             int totalYears, boolean measEnabled, boolean llmEnabled,
-            String apiKey, String model, double budgetUsd, long seed
+            String apiKey, String model, double budgetUsd, long seed,
+            boolean playerMode, String playerArchetype
     ) {}
 
     @Override
@@ -153,6 +154,28 @@ public class LauncherWindow extends Application {
         HBox previewButtons = new HBox(10, previewBtn, previewInfo);
         previewButtons.setAlignment(Pos.CENTER_LEFT);
 
+        // Player mode
+        Label playerHeader = new Label("Player Mode");
+        playerHeader.setFont(Font.font("System", FontWeight.BOLD, 14));
+
+        CheckBox playerEnabled = new CheckBox("Play as an agent (human-controlled)");
+        playerEnabled.setSelected(false);
+        Label playerHint = new Label("You control one agent manually while all others use LLM");
+        playerHint.setStyle("-fx-text-fill: #888; -fx-font-size: 11;");
+
+        ComboBox<String> playerArchetype = new ComboBox<>();
+        playerArchetype.getItems().addAll("ENTREPRENEUR", "WORKER", "OPTIMIZER", "COOPERATOR",
+                "EXPLOITER", "INNOVATOR", "ARTISAN", "POLITICIAN", "PHILANTHROPIST",
+                "ACCUMULATOR", "AUTOMATOR", "FREE_RIDER", "SPECULATOR", "HOMESTEADER",
+                "PROVIDER", "LANDLORD", "ORGANIZER", "REGULATOR");
+        playerArchetype.setValue("ENTREPRENEUR");
+        playerArchetype.setDisable(true);
+        playerEnabled.selectedProperty().addListener((obs, o, n) -> playerArchetype.setDisable(!n));
+
+        GridPane playerGrid = new GridPane();
+        playerGrid.setHgap(10); playerGrid.setVgap(5);
+        playerGrid.addRow(0, new Label("Archetype:"), playerArchetype);
+
         // Start button
         Button startButton = new Button("Start Simulation");
         startButton.setFont(Font.font("System", FontWeight.BOLD, 16));
@@ -174,7 +197,9 @@ public class LauncherWindow extends Application {
                     key,
                     modelChoice.getValue(),
                     budget.getValue(),
-                    (long) seed.getValue()
+                    (long) seed.getValue(),
+                    playerEnabled.isSelected(),
+                    playerArchetype.getValue()
             );
 
             stage.close();
@@ -189,6 +214,7 @@ public class LauncherWindow extends Application {
                 agentHeader, agentGrid, new Separator(),
                 measHeader, measEnabled, measHint, new Separator(),
                 llmHeader, llmEnabled, llmGrid, new Separator(),
+                playerHeader, playerEnabled, playerHint, playerGrid, new Separator(),
                 startButton
         );
         layout.setPadding(new Insets(20));

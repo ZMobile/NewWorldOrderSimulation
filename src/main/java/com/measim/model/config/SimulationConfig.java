@@ -44,6 +44,8 @@ public class SimulationConfig {
     private int snapshotInterval = 12;
     private int metricsInterval = 1;
     private boolean communalGatheringPoints = true;
+    private boolean playerMode = false;
+    private String playerArchetype = "ENTREPRENEUR";
     private int ubiDistributionInterval = 12; // accumulate for 1 year before distributing
     private double resourceDiscoveryProbability = 0.02;
     private double techBreakthroughProbability = 0.01;
@@ -192,6 +194,10 @@ public class SimulationConfig {
     public int snapshotInterval() { return snapshotInterval; }
     public int metricsInterval() { return metricsInterval; }
     public boolean communalGatheringPoints() { return communalGatheringPoints; }
+    public boolean playerMode() { return playerMode; }
+    public String playerArchetype() { return playerArchetype; }
+    public void setPlayerMode(boolean mode) { this.playerMode = mode; }
+    public void setPlayerArchetype(String archetype) { this.playerArchetype = archetype; }
     public int ubiDistributionInterval() { return ubiDistributionInterval; }
     public double resourceDiscoveryProbability() { return resourceDiscoveryProbability; }
     public double techBreakthroughProbability() { return techBreakthroughProbability; }

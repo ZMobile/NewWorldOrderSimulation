@@ -43,6 +43,7 @@ public class DecisionPhase implements TickPhase {
     private final com.measim.dao.CommunicationDao communicationDao;
     private final SimulationConfig config;
     private final Map<String, List<AgentAction>> pendingActions = new HashMap<>();
+    private String playerAgentId = null; // set if player mode enabled
 
     @Inject
     public DecisionPhase(AgentDao agentDao, MarketDao marketDao, WorldDao worldDao,
@@ -86,10 +87,34 @@ public class DecisionPhase implements TickPhase {
         System.out.printf("    [Decision] Tier 1 (%dms): %s%n", t1Elapsed, actionCounts);
         System.out.flush();
 
+        // Player agent always escalates (if player mode is on)
+        if (playerAgentId != null) {
+            Agent playerAgent = agentDao.getAgent(playerAgentId);
+            if (playerAgent != null) {
+                String spatial = buildSpatialContext(playerAgent, currentTick);
+                String tradeCtx = buildTradeContext(playerAgent);
+                String fullContext = "Tick " + currentTick + " (Year " + (currentTick / 12) + ")\n" +
+                        "Credits: " + String.format("%.0f", playerAgent.state().credits()) +
+                        " | Satisfaction: " + String.format("%.2f", playerAgent.state().satisfaction()) + "\n\n" +
+                        spatial;
+
+                var panel = com.measim.ui.fx.SimulationViewer.getPlayerPanel();
+                if (panel != null) {
+                    List<AgentAction> playerActions = panel.waitForPlayerAction(fullContext, tradeCtx);
+                    List<AgentAction> nonIdle = playerActions.stream()
+                            .filter(a -> !(a instanceof AgentAction.Idle)).toList();
+                    if (!nonIdle.isEmpty()) {
+                        pendingActions.put(playerAgentId, nonIdle);
+                    }
+                }
+            }
+        }
+
         // Tier 2: LLM escalation for eligible agents (replaces their Tier 1 action)
         if (llmService.isAvailable()) {
             List<Agent> escalationCandidates = agentDao.getAllAgents().stream()
                     .filter(a -> shouldEscalateToLlm(a, currentTick))
+                    .filter(a -> !a.id().equals(playerAgentId)) // player handled above
                     .toList();
 
             if (!escalationCandidates.isEmpty()) {
@@ -150,6 +175,9 @@ public class DecisionPhase implements TickPhase {
     }
 
     public Map<String, List<AgentAction>> pendingActions() { return Collections.unmodifiableMap(pendingActions); }
+
+    public void setPlayerAgentId(String id) { this.playerAgentId = id; }
+    public String getPlayerAgentId() { return playerAgentId; }
 
     // Interaction actions collected across micro-rounds (messages, trades, contracts)
     private final List<Map.Entry<String, AgentAction>> interactionActions =

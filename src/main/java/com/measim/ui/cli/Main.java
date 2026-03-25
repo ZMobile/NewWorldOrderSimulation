@@ -75,6 +75,21 @@ public class Main {
                 SimulationViewer.setBudgetPauseHandler(sharedInjector.getInstance(com.measim.service.llm.BudgetPauseHandler.class));
                 SimulationViewer.setLlmDao(sharedInjector.getInstance(com.measim.dao.LlmDao.class));
 
+                // Player mode: find the first agent of the chosen archetype and mark as player
+                if (settings.playerMode()) {
+                    SimulationViewer.enablePlayerMode();
+                    var agentDaoInstance = sharedInjector.getInstance(AgentDao.class);
+                    var decisionPhase = sharedInjector.getInstance(
+                            com.measim.service.simulation.phases.DecisionPhase.class);
+                    for (var agent : agentDaoInstance.getAllAgents()) {
+                        if (agent.identity().archetype().name().equals(settings.playerArchetype())) {
+                            decisionPhase.setPlayerAgentId(agent.id());
+                            System.out.println("Player mode: controlling " + agent.id() + " (" + agent.name() + ", " + settings.playerArchetype() + ")");
+                            break;
+                        }
+                    }
+                }
+
                 // Open viewer immediately on FX thread
                 Platform.runLater(() -> {
                     try {
