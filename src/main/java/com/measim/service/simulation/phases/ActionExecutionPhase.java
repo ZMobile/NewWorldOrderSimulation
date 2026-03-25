@@ -443,6 +443,19 @@ public class ActionExecutionPhase implements TickPhase {
                     // Look up the actual pending offer terms
                     String key = accept.offererAgentId() + ":" + agent.id();
                     PendingJobOffer pending = pendingJobOffers.remove(key);
+
+                    // Remove reverse offer if both offered (prevent duplicate)
+                    pendingJobOffers.remove(agent.id() + ":" + accept.offererAgentId());
+
+                    // Check for existing work relation (prevent duplicates)
+                    boolean alreadyWorking = contractService.getAgentContracts(agent.id()).stream()
+                            .anyMatch(c -> c.isActive() && c.type() == com.measim.model.contract.Contract.ContractType.WORK_RELATION
+                                    && (c.partyAId().equals(accept.offererAgentId()) || c.partyBId().equals(accept.offererAgentId())));
+                    if (alreadyWorking) {
+                        agent.addMemory(new MemoryEntry(currentTick, "CONTRACT",
+                                "Already have work relation with " + accept.offererAgentId(), 0.3, null, 0));
+                        break;
+                    }
                     double wages = pending != null ? pending.wagesPerTick() : 5.0;
                     int duration = pending != null ? pending.durationTicks() : 12;
 
@@ -486,6 +499,21 @@ public class ActionExecutionPhase implements TickPhase {
                     // Look up actual pending offer terms
                     String key = accept.proposerAgentId() + ":" + agent.id() + ":" + accept.contractType();
                     PendingContractOffer pending = pendingContractOffers.remove(key);
+
+                    // Also remove the reverse proposal if both proposed (prevent duplicate contract)
+                    String reverseKey = agent.id() + ":" + accept.proposerAgentId() + ":" + accept.contractType();
+                    pendingContractOffers.remove(reverseKey);
+
+                    // Check for existing active contract between this pair (prevent duplicates)
+                    boolean alreadyContracted = contractService.getAgentContracts(agent.id()).stream()
+                            .anyMatch(c -> c.isActive() &&
+                                    (c.partyAId().equals(accept.proposerAgentId()) || c.partyBId().equals(accept.proposerAgentId())));
+                    if (alreadyContracted) {
+                        agent.addMemory(new MemoryEntry(currentTick, "CONTRACT",
+                                "Already have active contract with " + accept.proposerAgentId(), 0.3, null, 0));
+                        break;
+                    }
+
                     double value = pending != null ? pending.valuePerTick() : 5.0;
                     int duration = pending != null ? pending.durationTicks() : 12;
 
