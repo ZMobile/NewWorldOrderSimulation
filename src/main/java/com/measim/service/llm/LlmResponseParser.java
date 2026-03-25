@@ -17,15 +17,40 @@ public final class LlmResponseParser {
 
     private LlmResponseParser() {}
 
-    public static AgentAction parseAgentAction(String responseContent) {
+    /**
+     * Parse multiple actions from a single LLM response.
+     * Accepts both single object {"action":"..."} and array [{"action":"..."},...]
+     */
+    public static java.util.List<AgentAction> parseAgentActions(String responseContent) {
         try {
-            // Extract JSON from response (handle markdown code blocks)
             String json = responseContent.trim();
             if (json.startsWith("```")) {
                 json = json.replaceAll("```json\\s*", "").replaceAll("```\\s*", "").trim();
             }
-
             JsonNode root = MAPPER.readTree(json);
+
+            if (root.isArray()) {
+                java.util.List<AgentAction> actions = new java.util.ArrayList<>();
+                for (JsonNode node : root) {
+                    AgentAction a = parseSingleAction(node);
+                    if (!(a instanceof AgentAction.Idle)) actions.add(a);
+                }
+                return actions.isEmpty() ? java.util.List.of(new AgentAction.Idle()) : actions;
+            } else {
+                return java.util.List.of(parseSingleAction(root));
+            }
+        } catch (Exception e) {
+            return java.util.List.of(new AgentAction.Idle());
+        }
+    }
+
+    /** Single action parse — kept for backwards compatibility. */
+    public static AgentAction parseAgentAction(String responseContent) {
+        return parseAgentActions(responseContent).getFirst();
+    }
+
+    private static AgentAction parseSingleAction(JsonNode root) {
+        try {
             String action = root.path("action").asText("IDLE");
 
             return switch (action.toUpperCase()) {
@@ -105,3 +130,4 @@ public final class LlmResponseParser {
         }
     }
 }
+

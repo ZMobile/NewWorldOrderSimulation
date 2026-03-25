@@ -121,17 +121,19 @@ public class ActionExecutionPhase implements TickPhase {
         List<java.util.Map.Entry<Agent, AgentAction>> localActions = new java.util.ArrayList<>();
 
         for (Agent agent : agentDao.getAllAgents()) {
-            AgentAction action = decisionPhase.pendingActions().get(agent.id());
-            if (action == null || action instanceof AgentAction.Idle) continue;
+            var actions = decisionPhase.pendingActions().get(agent.id());
+            if (actions == null) continue;
+            if (incapacitatedAgents.contains(agent.id())) continue;
 
-            if (incapacitatedAgents.contains(agent.id())) continue; // survival mode only
-
-            if (action instanceof AgentAction.BuildInfrastructure
-                    || action instanceof AgentAction.CreateService
-                    || action instanceof AgentAction.FreeFormAction) {
-                gmActions.add(java.util.Map.entry(agent, action));
-            } else {
-                localActions.add(java.util.Map.entry(agent, action));
+            for (AgentAction action : actions) {
+                if (action instanceof AgentAction.Idle) continue;
+                if (action instanceof AgentAction.BuildInfrastructure
+                        || action instanceof AgentAction.CreateService
+                        || action instanceof AgentAction.FreeFormAction) {
+                    gmActions.add(java.util.Map.entry(agent, action));
+                } else {
+                    localActions.add(java.util.Map.entry(agent, action));
+                }
             }
         }
 

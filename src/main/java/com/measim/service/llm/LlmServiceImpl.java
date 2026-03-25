@@ -50,6 +50,22 @@ public class LlmServiceImpl implements LlmService {
                 .thenApply(response -> LlmResponseParser.parseAgentAction(response.content()));
     }
 
+    /** Returns multiple actions from a single LLM call. */
+    public CompletableFuture<java.util.List<AgentAction>> escalateDecisionMulti(
+            Agent agent, String spatialContext, String decisionContext,
+            int currentTick, String tradeOfferContext) {
+        if (!isAvailable()) {
+            return CompletableFuture.completedFuture(java.util.List.of(new AgentAction.Idle()));
+        }
+        String model = selectModel(agent);
+        String systemPrompt = ArchetypePrompts.systemPrompt(agent);
+        String userPrompt = ArchetypePrompts.userPrompt(agent, spatialContext, decisionContext,
+                currentTick, tradeOfferContext);
+        LlmRequest request = LlmRequest.agentDecision(model, systemPrompt, userPrompt);
+        return llmDao.sendRequest(request)
+                .thenApply(response -> LlmResponseParser.parseAgentActions(response.content()));
+    }
+
     @Override
     public CompletableFuture<List<AgentAction>> batchEscalate(List<EscalationRequest> requests) {
         if (!isAvailable() || requests.isEmpty()) {

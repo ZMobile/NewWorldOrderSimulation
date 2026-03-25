@@ -49,7 +49,9 @@ public final class ArchetypePrompts {
                   to respond to any messages or offers you receive. A full negotiation (message → response →
                   offer → accept) can complete within one tick — you don't need to wait months to close a deal.
 
-                Respond with exactly ONE action as JSON. You may use a STANDARD action or a FREE-FORM action.
+                Respond with one or more actions as JSON. Single: {"action":"..."}.
+                Multiple: [{"action":"..."},{"action":"..."}].
+                You can do multiple things per tick — communicate AND trade AND build. The GM moderates feasibility.
 
                 STANDARD actions (for common operations):
                 {"action": "MOVE", "q": N, "r": N}

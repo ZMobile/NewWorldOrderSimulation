@@ -42,7 +42,7 @@ public class DecisionPhase implements TickPhase {
     private final com.measim.service.trade.CommunicationRangeService commRange;
     private final com.measim.dao.CommunicationDao communicationDao;
     private final SimulationConfig config;
-    private final Map<String, AgentAction> pendingActions = new HashMap<>();
+    private final Map<String, List<AgentAction>> pendingActions = new HashMap<>();
 
     @Inject
     public DecisionPhase(AgentDao agentDao, MarketDao marketDao, WorldDao worldDao,
@@ -73,7 +73,7 @@ public class DecisionPhase implements TickPhase {
         // Tier 1: deterministic decisions for ALL agents
         long t1Start = System.currentTimeMillis();
         for (var agent : agentDao.getAllAgents()) {
-            pendingActions.put(agent.id(), decisionService.decideStrategicAction(agent, prices, currentTick));
+            pendingActions.put(agent.id(), List.of(decisionService.decideStrategicAction(agent, prices, currentTick)));
         }
         long t1Elapsed = System.currentTimeMillis() - t1Start;
 
@@ -123,7 +123,8 @@ public class DecisionPhase implements TickPhase {
                             String tradeCtx = tradeSb.isEmpty() ? "None" : tradeSb.toString();
 
                             return Map.entry(agent.id(),
-                                    llmService.escalateDecision(agent, spatial, decision, currentTick, tradeCtx));
+                                    ((com.measim.service.llm.LlmServiceImpl) llmService)
+                                            .escalateDecisionMulti(agent, spatial, decision, currentTick, tradeCtx));
                         })
                         .toList();
 
@@ -133,10 +134,12 @@ public class DecisionPhase implements TickPhase {
 
                 int llmActions = 0;
                 for (var entry : futures) {
-                    AgentAction llmAction = entry.getValue().join();
-                    if (!(llmAction instanceof AgentAction.Idle)) {
-                        pendingActions.put(entry.getKey(), llmAction);
-                        llmActions++;
+                    List<AgentAction> agentActions = entry.getValue().join();
+                    List<AgentAction> nonIdle = agentActions.stream()
+                            .filter(a -> !(a instanceof AgentAction.Idle)).toList();
+                    if (!nonIdle.isEmpty()) {
+                        pendingActions.put(entry.getKey(), nonIdle);
+                        llmActions += nonIdle.size();
                     }
                 }
                 System.out.printf("    [Decision] LLM done (%dms): %d/%d produced actions%n",
@@ -146,7 +149,7 @@ public class DecisionPhase implements TickPhase {
         }
     }
 
-    public Map<String, AgentAction> pendingActions() { return Collections.unmodifiableMap(pendingActions); }
+    public Map<String, List<AgentAction>> pendingActions() { return Collections.unmodifiableMap(pendingActions); }
 
     // Interaction actions collected across micro-rounds (messages, trades, contracts)
     private final List<Map.Entry<String, AgentAction>> interactionActions =
