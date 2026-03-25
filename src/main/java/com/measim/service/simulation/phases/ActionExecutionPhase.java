@@ -402,6 +402,28 @@ public class ActionExecutionPhase implements TickPhase {
                 tradeService.rejectOffer(reject.offerId());
             }
             case AgentAction.SendMessage msg -> {
+                // Auto-detect verbal acceptance: if message says "accept" and there's a pending
+                // job/contract offer from the target, convert to mechanical acceptance
+                String lowerContent = msg.content().toLowerCase();
+                if (lowerContent.contains("accept") && (lowerContent.contains("offer") || lowerContent.contains("job")
+                        || lowerContent.contains("contract") || lowerContent.contains("deal")
+                        || lowerContent.contains("terms") || lowerContent.contains("agree"))) {
+                    // Check for pending job offer from this target
+                    String jobKey = msg.targetAgentId() + ":" + agent.id();
+                    if (pendingJobOffers.containsKey(jobKey)) {
+                        executeStrategicAction(agent, new AgentAction.AcceptJob(msg.targetAgentId()), market, currentTick);
+                        break;
+                    }
+                    // Check for pending contract offer
+                    for (var key : pendingContractOffers.keySet()) {
+                        if (key.startsWith(msg.targetAgentId() + ":" + agent.id() + ":")) {
+                            String contractType = key.substring(key.lastIndexOf(':') + 1);
+                            executeStrategicAction(agent, new AgentAction.AcceptContract(msg.targetAgentId(), contractType), market, currentTick);
+                            break;
+                        }
+                    }
+                }
+
                 // Private message — only delivered if within comm range
                 var target = agentDao.getAgent(msg.targetAgentId());
                 if (target != null && commRange.canCommunicate(agent, target)) {

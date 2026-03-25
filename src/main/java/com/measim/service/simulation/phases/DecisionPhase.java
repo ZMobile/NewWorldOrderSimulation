@@ -298,10 +298,14 @@ public class DecisionPhase implements TickPhase {
      */
     private String buildConversationContext(Agent agent, int currentTick, Map<String, Integer> pairMessageCount) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Respond to messages below. Pick the most important to respond to.\n");
-        sb.append("Actions: SEND_MESSAGE, OFFER_TRADE, ACCEPT_TRADE, OFFER_JOB, ACCEPT_JOB, ");
-        sb.append("ACCEPT_CONTRACT, IDLE (done).\n");
-        sb.append("Do NOT send duplicate messages to someone you already messaged this tick.\n\n");
+        sb.append("Respond to the conversations below.\n\n");
+        sb.append("IMPORTANT: To FORMALLY accept a job or contract, you MUST use the action:\n");
+        sb.append("  {\"action\":\"ACCEPT_JOB\",\"offererAgent\":\"agent_X\"}\n");
+        sb.append("  {\"action\":\"ACCEPT_CONTRACT\",\"proposerAgent\":\"agent_X\",\"contractType\":\"WORK_RELATION\"}\n");
+        sb.append("Saying 'I accept' in a SEND_MESSAGE does NOT create a binding contract.\n");
+        sb.append("To make a trade: {\"action\":\"OFFER_TRADE\",...} or {\"action\":\"ACCEPT_TRADE\",\"offerId\":\"...\"}\n");
+        sb.append("To just talk: {\"action\":\"SEND_MESSAGE\",\"targetAgent\":\"agent_X\",\"message\":\"...\"}\n");
+        sb.append("To do nothing: {\"action\":\"IDLE\"}\n\n");
 
         var messages = communicationDao.getAllMessages().stream()
                 .filter(m -> m.tick() == currentTick)
