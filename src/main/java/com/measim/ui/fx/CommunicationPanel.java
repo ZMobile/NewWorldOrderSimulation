@@ -277,8 +277,18 @@ public class CommunicationPanel extends VBox {
     public TextField getSearchField() { return searchField; }
 
     private void copyToClipboard(String text) {
-        ClipboardContent content = new ClipboardContent();
-        content.putString(text);
-        Clipboard.getSystemClipboard().setContent(content);
+        try {
+            // Use AWT clipboard as fallback — more reliable for large text
+            java.awt.datatransfer.StringSelection selection = new java.awt.datatransfer.StringSelection(text);
+            java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
+        } catch (Exception ex) {
+            try {
+                ClipboardContent content = new ClipboardContent();
+                content.putString(text);
+                Clipboard.getSystemClipboard().setContent(content);
+            } catch (Exception ex2) {
+                statusLabel.setText("Copy failed: " + ex2.getMessage());
+            }
+        }
     }
 }
