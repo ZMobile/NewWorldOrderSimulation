@@ -157,61 +157,51 @@ public class DecisionPhase implements TickPhase {
     }
 
     /**
-     * Multi-turn agent conversations within a tick.
-     * Like Catan: during your turn, you can talk freely until satisfied.
+     * Conversation-pair based interaction within a tick.
      *
-     * Flow:
-     *   Round 1: All agents with new messages/offers respond (concurrent)
-     *   → Actions execute (messages delivered, offers posted)
-     *   Round 2: Agents who received NEW responses get to reply
-     *   → Actions execute
-     *   Round 3: Same pattern — only agents with genuinely new input
-     *   Stop: When no new messages generated, or max rounds hit
+     * Each conversation pair (A<->B) gets up to 3 exchanges:
+     *   Exchange 1: B responds to A's message
+     *   Exchange 2: A responds to B's response
+     *   Exchange 3: B finalizes (accept offer, confirm, etc.)
      *
-     * Each agent can participate in multiple rounds IF they receive new input.
-     * An agent who sent a message and got a reply can respond to the reply.
+     * No double-texting: A can't send two messages to B without B responding.
+     * All pairs run concurrently within each exchange.
+     * Agents are NOT forced to communicate — only triggered by incoming messages.
+     * Max 10 concurrent conversations per agent per tick.
      */
-    public void runInteractionRounds(int currentTick, int maxRounds,
+    public void runInteractionRounds(int currentTick, int maxExchanges,
                                       java.util.function.BiConsumer<String, AgentAction> actionExecutor) {
         if (!llmService.isAvailable()) return;
         interactionActions.clear();
 
-        for (int round = 0; round < maxRounds; round++) {
-            int msgCountBefore = communicationDao.getAllMessages().size();
-            int offerCountBefore = interactionActions.size();
+        // Track "sender:receiver" pairs — no double-texting
+        Set<String> sentPairs = new HashSet<>();
+        for (var m : communicationDao.getAllMessages()) {
+            if (m.tick() == currentTick && m.channel() == com.measim.model.communication.Message.Channel.AGENT_TO_AGENT) {
+                sentPairs.add(m.senderId() + ":" + m.receiverId());
+            }
+        }
 
-            // Find agents who have NEW unprocessed input this tick
-            // "New" = messages/offers they haven't yet responded to
-            List<Agent> responders = findAgentsWithNewInput(currentTick, round);
+        for (int exchange = 0; exchange < maxExchanges; exchange++) {
+            int msgCountBefore = communicationDao.getAllMessages().size();
+
+            // Find agents with unresponded messages (they haven't replied to a specific sender)
+            List<Agent> responders = findAgentsNeedingResponse(currentTick, sentPairs);
 
             if (responders.isEmpty()) {
-                if (round > 0) System.out.printf("    [Interaction] Round %d: conversations settled.%n", round + 1);
+                if (exchange > 0) System.out.printf("    [Conversation] Exchange %d: settled.%n", exchange + 1);
                 break;
             }
 
-            System.out.printf("    [Interaction] Round %d: %d agents in conversation...%n",
-                    round + 1, responders.size());
+            System.out.printf("    [Conversation] Exchange %d: %d agents responding...%n",
+                    exchange + 1, responders.size());
             System.out.flush();
 
-            // All responders act concurrently
             var futures = responders.stream()
                     .map(agent -> {
                         String spatial = buildSpatialContext(agent, currentTick);
-                        String context = buildConversationContext(agent, currentTick);
-
-                        var incoming = tradeService.getIncomingOffers(agent.id());
-                        var visible = tradeService.getVisibleOpenOffers(agent.id());
-                        StringBuilder tradeSb = new StringBuilder();
-                        if (!incoming.isEmpty()) {
-                            tradeSb.append("Pending offers for you:\n");
-                            for (var o : incoming) tradeSb.append("  ").append(o.id()).append(": ").append(o.summary()).append("\n");
-                        }
-                        if (!visible.isEmpty()) {
-                            tradeSb.append("Open offers nearby:\n");
-                            for (var o : visible) tradeSb.append("  ").append(o.id()).append(": ").append(o.summary()).append("\n");
-                        }
-                        String tradeCtx = tradeSb.isEmpty() ? "None" : tradeSb.toString();
-
+                        String context = buildConversationContext(agent, currentTick, sentPairs);
+                        String tradeCtx = buildTradeContext(agent);
                         return Map.entry(agent.id(),
                                 llmService.escalateDecision(agent, spatial, context, currentTick, tradeCtx));
                     })
@@ -224,73 +214,92 @@ public class DecisionPhase implements TickPhase {
             int actions = 0;
             for (var entry : futures) {
                 AgentAction action = entry.getValue().join();
-                if (!(action instanceof AgentAction.Idle)) {
-                    interactionActions.add(Map.entry(entry.getKey(), action));
-                    // Execute immediately so messages/offers are visible to next round
-                    actionExecutor.accept(entry.getKey(), action);
-                    actions++;
+                if (action instanceof AgentAction.Idle) continue;
+
+                // Enforce no double-texting
+                if (action instanceof AgentAction.SendMessage sm) {
+                    String pair = entry.getKey() + ":" + sm.targetAgentId();
+                    if (sentPairs.contains(pair)) continue;
+                    sentPairs.add(pair);
                 }
+
+                interactionActions.add(Map.entry(entry.getKey(), action));
+                actionExecutor.accept(entry.getKey(), action);
+                actions++;
             }
-            System.out.printf("    [Interaction] Round %d: %d actions executed%n", round + 1, actions);
+            System.out.printf("    [Conversation] Exchange %d: %d actions%n", exchange + 1, actions);
             System.out.flush();
 
             if (actions == 0) break;
-
-            // Did this round generate new messages? If not, conversations are done.
-            int msgCountAfter = communicationDao.getAllMessages().size();
-            if (msgCountAfter == msgCountBefore) break;
+            if (communicationDao.getAllMessages().size() == msgCountBefore) break;
         }
     }
 
-    // Track which messages each agent has already "seen" (responded to)
-    private final Map<String, Integer> lastSeenMessageIndex = new HashMap<>();
+    private String buildTradeContext(Agent agent) {
+        var incoming = tradeService.getIncomingOffers(agent.id());
+        var visible = tradeService.getVisibleOpenOffers(agent.id());
+        StringBuilder sb = new StringBuilder();
+        if (!incoming.isEmpty()) {
+            sb.append("Pending trade offers for you:\n");
+            for (var o : incoming) sb.append("  ").append(o.id()).append(": ").append(o.summary()).append("\n");
+        }
+        if (!visible.isEmpty()) {
+            sb.append("Open offers nearby:\n");
+            for (var o : visible.stream().limit(5).toList())
+                sb.append("  ").append(o.id()).append(": ").append(o.summary()).append("\n");
+        }
+        return sb.isEmpty() ? "None" : sb.toString();
+    }
 
     /**
-     * Find agents who have genuinely new input to respond to.
-     * "New" means messages/offers they haven't yet processed.
+     * Find agents who have messages from specific senders they haven't replied to yet.
      */
-    private List<Agent> findAgentsWithNewInput(int currentTick, int round) {
-        if (round == 0) lastSeenMessageIndex.clear();
+    private List<Agent> findAgentsNeedingResponse(int currentTick, Set<String> sentPairs) {
+        // Also check pending trade offers
+        Set<String> agentsWithOffers = new HashSet<>();
+        for (var agent : agentDao.getAllAgents()) {
+            if (!tradeService.getIncomingOffers(agent.id()).isEmpty()) {
+                agentsWithOffers.add(agent.id());
+            }
+        }
 
-        var allMessages = communicationDao.getAllMessages();
+        Map<String, Integer> conversationCount = new HashMap<>();
 
         return agentDao.getAllAgents().stream()
                 .filter(a -> {
                     String id = a.id();
-                    int lastSeen = lastSeenMessageIndex.getOrDefault(id, 0);
+                    if (agentsWithOffers.contains(id)) return true;
 
-                    // Check for pending trade offers
-                    if (!tradeService.getIncomingOffers(id).isEmpty()) return true;
-
-                    // Check for messages after their last seen index
-                    for (int i = lastSeen; i < allMessages.size(); i++) {
-                        var m = allMessages.get(i);
+                    // Find senders who messaged me that I haven't replied to
+                    for (var m : communicationDao.getAllMessages()) {
                         if (m.tick() != currentTick) continue;
                         if (m.senderId().equals(id)) continue;
-                        if (m.receiverId().equals(id) || "ALL_AT_TILE".equals(m.receiverId())) {
-                            if (m.channel() == com.measim.model.communication.Message.Channel.AGENT_TO_AGENT
-                                    || m.channel() == com.measim.model.communication.Message.Channel.BROADCAST) {
-                                return true;
-                            }
+                        boolean directedAtMe = id.equals(m.receiverId()) || "ALL_AT_TILE".equals(m.receiverId());
+                        if (!directedAtMe) continue;
+                        if (m.channel() != com.measim.model.communication.Message.Channel.AGENT_TO_AGENT
+                                && m.channel() != com.measim.model.communication.Message.Channel.BROADCAST) continue;
+
+                        // Have I replied to this sender?
+                        if (!sentPairs.contains(id + ":" + m.senderId())) {
+                            return true;
                         }
                     }
                     return false;
                 })
-                .peek(a -> lastSeenMessageIndex.put(a.id(), allMessages.size()))
+                .filter(a -> conversationCount.merge(a.id(), 1, Integer::sum) <= 10) // max 10 conversations
                 .toList();
     }
 
     /**
-     * Build conversation context for an agent's interaction round.
-     * Shows the recent conversation thread so the agent can respond coherently.
+     * Build conversation context grouped by partner, showing who needs a response.
      */
-    private String buildConversationContext(Agent agent, int currentTick) {
+    private String buildConversationContext(Agent agent, int currentTick, Set<String> sentPairs) {
         StringBuilder sb = new StringBuilder();
-        sb.append("You're in a conversation. Respond to messages and offers you've received.\n");
-        sb.append("You can: SEND_MESSAGE, BROADCAST, OFFER_TRADE, ACCEPT_TRADE, REJECT_TRADE, ");
-        sb.append("OFFER_JOB, ACCEPT_JOB, ACCEPT_CONTRACT, REJECT_TRADE, or IDLE to end your turn.\n\n");
+        sb.append("Respond to messages below. Pick the most important to respond to.\n");
+        sb.append("Actions: SEND_MESSAGE, OFFER_TRADE, ACCEPT_TRADE, OFFER_JOB, ACCEPT_JOB, ");
+        sb.append("ACCEPT_CONTRACT, IDLE (done).\n");
+        sb.append("Do NOT send duplicate messages to someone you already messaged this tick.\n\n");
 
-        // Show conversation thread for this tick
         var messages = communicationDao.getAllMessages().stream()
                 .filter(m -> m.tick() == currentTick)
                 .filter(m -> m.senderId().equals(agent.id()) || m.receiverId().equals(agent.id())
@@ -299,13 +308,32 @@ public class DecisionPhase implements TickPhase {
                         || m.channel() == com.measim.model.communication.Message.Channel.BROADCAST)
                 .toList();
 
-        if (!messages.isEmpty()) {
-            sb.append("Conversation this tick:\n");
-            for (var m : messages) {
-                String dir = m.senderId().equals(agent.id()) ? "You said" : m.senderId() + " said";
-                sb.append(String.format("  %s: %s\n", dir,
-                        m.content().substring(0, Math.min(150, m.content().length()))));
+        // Group by conversation partner
+        Map<String, List<com.measim.model.communication.Message>> byPartner = new java.util.LinkedHashMap<>();
+        List<String> needsReply = new ArrayList<>();
+
+        for (var m : messages) {
+            String partner = m.senderId().equals(agent.id()) ? m.receiverId() : m.senderId();
+            if (partner == null || "ALL_AT_TILE".equals(partner)) partner = "_broadcast";
+            byPartner.computeIfAbsent(partner, k -> new ArrayList<>()).add(m);
+
+            if (!m.senderId().equals(agent.id()) && !sentPairs.contains(agent.id() + ":" + m.senderId())) {
+                if (!needsReply.contains(m.senderId())) needsReply.add(m.senderId());
             }
+        }
+
+        for (var entry : byPartner.entrySet()) {
+            String partner = entry.getKey();
+            sb.append("_broadcast".equals(partner) ? "[Broadcast]:\n" : "[Chat with " + partner + "]:\n");
+            for (var m : entry.getValue()) {
+                String who = m.senderId().equals(agent.id()) ? "You" : m.senderId();
+                String text = m.content().length() > 150 ? m.content().substring(0, 150) + "..." : m.content();
+                sb.append("  ").append(who).append(": ").append(text).append("\n");
+            }
+        }
+
+        if (!needsReply.isEmpty()) {
+            sb.append("\nAWAITING YOUR REPLY: ").append(String.join(", ", needsReply)).append("\n");
         }
 
         return sb.toString();
