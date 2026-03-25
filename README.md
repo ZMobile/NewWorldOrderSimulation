@@ -123,7 +123,7 @@ You don't deploy a new operating system to production without testing it. MeaSim
 - **Proximity-based trade** — no built-in exchange; trade is agent-to-agent or through agent-created marketplace services
 - **Robot labor** with configurable automation curves
 - **Single MEAS protocol zone** — one set of rules, emergent governance built by agents as services
-- **Agent messaging** — private messages (SEND_MESSAGE) and tile-local broadcasts (BROADCAST) within communication range, enabling negotiation, coalition building, and information sharing. Up to 4 micro-rounds per tick allow full conversations (see→message→negotiate→offer→accept) within a single tick.
+- **Agent messaging** — private messages (SEND_MESSAGE) and tile-local broadcasts (BROADCAST) within communication range. Conversation-pair interaction: up to 3 exchanges per pair per tick, strict no-double-texting (must wait for reply). Agents can return multiple actions per LLM call (JSON array), enabling rich multi-step turns.
 - **Technology discovery** through a Game Master LLM that adjudicates research and maintains world coherence
 
 ### The 18 Archetypes: Adversarial Testing by Design
@@ -332,7 +332,7 @@ Service categories: financial, logistics, healthcare, education, legal, security
 |---|-------|------|-------------|
 | 1 | Perception | No | Agents observe environment, update risk perceptions from events |
 | 2 | Decision | **Tier 1+2** | Deterministic for all agents, then LLM escalation for eligible agents (20-50% per tick) |
-| 3 | Action | Partial | Deterministic physics (autoExtract→autoProduce) + LLM-driven actions with up to 4 micro-rounds per tick (see→message→negotiate→offer→accept): trade, messaging, contract negotiation, infrastructure proposals + GM eval |
+| 3 | Action | Partial | Deterministic physics (autoExtract→autoProduce) + LLM-driven actions (multi-action per call, 3 exchanges/pair/tick, no double-texting): trade, messaging, contract negotiation, infrastructure proposals + GM eval |
 | 4 | Market | No | Proximity-based trades resolve, MEAS modifiers applied, credits flow |
 | 5 | Contracts | No | Wages paid, rent collected, service subscriptions, breach detection |
 | 6 | Scoring | No | Score vectors recomputed, modifiers updated, audit trail |
@@ -399,7 +399,7 @@ Agents route survival operations (extract, produce, move) through the determinis
 {"action": "FREE_FORM", "description": "Use my aqueduct's excess capacity to sell water transport to neighboring farmers while running my drill at half capacity to reduce wear", "budget": 200}
 ```
 
-The Game Master translates this into concrete game mechanics: what resources change, what it costs, what risks and byproducts it creates, what experience domain it exercises. Standard action types (MOVE, EXTRACT, PRODUCE, CLAIM_PROPERTY) handle physics deterministically. Claims require physical proximity (within 2 tiles). Contract negotiation (OFFER_JOB, ACCEPT_JOB, PROPOSE_CONTRACT, ACCEPT_CONTRACT, TERMINATE_CONTRACT) lets agents negotiate work agreements, rentals, and partnerships directly.
+The Game Master translates this into concrete game mechanics: what resources change, what it costs, what risks and byproducts it creates, what experience domain it exercises. Standard action types (MOVE, EXTRACT, PRODUCE, CLAIM_PROPERTY) handle physics deterministically. Claims require physical proximity (within 2 tiles). Contract negotiation (OFFER_JOB, ACCEPT_JOB, PROPOSE_CONTRACT, ACCEPT_CONTRACT, TERMINATE_CONTRACT, ACCEPT_PROPOSAL, REJECT_PROPOSAL) lets agents negotiate work agreements, rentals, partnerships, and infrastructure quotes. Verbal acceptance detection: saying "I accept" in a message with a pending offer auto-creates the contract.
 
 ### Agent Experience & Specialization
 
@@ -491,12 +491,12 @@ All core systems built, wired, and compiling:
 - **LLM Integration**: Claude API over HTTP/1.1 with a dedicated 100-thread pool (handles 100+ concurrent requests without thread starvation), two-tier decisions (deterministic + LLM escalation), concurrent batching, retry logic (3 retries with backoff), cost tracking
 - **Game Master**: Full DM — research, infrastructure evaluation (agent proposes/GM evaluates), novel actions for all archetypes, free-form action resolution, spontaneous world events, tile-specific coherence corrections. Multi-turn tool conversations with world-inspection tools (inspect_tile, inspect_agent, query_market, etc.) ground every decision in actual world state. Refuses out-of-jurisdiction requests (no trading, no market participation). Enforces tech tree prerequisites. Information boundaries. All reasoning observable.
 - **Model Tiering**: Sonnet 4.6 for routine operations (including world events), Opus 4.6 only for yearly coherence audits. Tool conversations estimated at 4x single-call cost for budget tracking
-- **Infrastructure**: GM-dynamic types, resource flow, maintenance/degradation, construction time. **Private** (farms, mines, factories) requires property claim. **Public** (roads, trails) requires governance approval, no property needed. Reserve robots available at premium for construction labor.
+- **Infrastructure**: GM-dynamic types, resource flow, maintenance/degradation, construction time. **Two-phase proposals**: BUILD_INFRASTRUCTURE returns a GM quote (cost only — risk/byproducts hidden); agent must ACCEPT_PROPOSAL or REJECT_PROPOSAL before construction begins. **Private** (farms, mines, factories) requires property claim. **Public** (roads, trails) requires governance approval, no property needed. Reserve robots available at premium for construction labor.
 - **Risk System**: Universal (all entity types), evolution model (age/usage/maintenance/environment/neighbors), true vs perceived risk, cascading effects
 - **Externalities**: Universal byproduct system with true/measured/perceived pollution layers. Hidden externalities go undetected until consequences emerge. Processed every tick, feeds into EF scoring.
 - **Services**: Agent-created (banking, logistics, insurance, education, etc.), GM evaluates proposals. Competitive market with reputation. Agents strategically choose which services to consume.
 - **Property**: Tile claim system — agents own slots, not tiles. Required for building. Purchase, sell, rent.
-- **Contracts**: Work relations (full-time, gig, freelance — weighted labor for LD axis), rental, trade, subscriptions, partnerships. Wages, rent, breach detection.
+- **Contracts**: Work relations (full-time, gig, freelance — weighted labor for LD axis), rental, trade, subscriptions, partnerships. Wages, rent, breach detection. Pending offers carry actual negotiated terms (not hardcoded defaults). Duplicate contract prevention.
 - **Labor Market**: Business owners hire unemployed agents. Wages flow. Robot displacement triggers LD axis. Weighted labor count prevents gig economy gaming.
 - **Subsistence**: Food + shelter requirements with grace period, graduated consequences, incapacitation at low satisfaction (survival mode)
 - **Commodity Reserve**: Physical resource backing for credits, GM-managed yearly, 20% minimum ratio, agents can't access directly
