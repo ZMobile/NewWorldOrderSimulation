@@ -174,11 +174,11 @@ public class DecisionPhase implements TickPhase {
         if (!llmService.isAvailable()) return;
         interactionActions.clear();
 
-        // Track "sender:receiver" pairs — no double-texting
-        Set<String> sentPairs = new HashSet<>();
+        // Track message count per direction — each side gets up to 3 messages per pair per tick
+        Map<String, Integer> pairMessageCount = new HashMap<>();
         for (var m : communicationDao.getAllMessages()) {
             if (m.tick() == currentTick && m.channel() == com.measim.model.communication.Message.Channel.AGENT_TO_AGENT) {
-                sentPairs.add(m.senderId() + ":" + m.receiverId());
+                pairMessageCount.merge(m.senderId() + ":" + m.receiverId(), 1, Integer::sum);
             }
         }
 
@@ -186,7 +186,7 @@ public class DecisionPhase implements TickPhase {
             int msgCountBefore = communicationDao.getAllMessages().size();
 
             // Find agents with unresponded messages (they haven't replied to a specific sender)
-            List<Agent> responders = findAgentsNeedingResponse(currentTick, sentPairs);
+            List<Agent> responders = findAgentsNeedingResponse(currentTick, pairMessageCount);
 
             if (responders.isEmpty()) {
                 if (exchange > 0) System.out.printf("    [Conversation] Exchange %d: settled.%n", exchange + 1);
@@ -200,7 +200,7 @@ public class DecisionPhase implements TickPhase {
             var futures = responders.stream()
                     .map(agent -> {
                         String spatial = buildSpatialContext(agent, currentTick);
-                        String context = buildConversationContext(agent, currentTick, sentPairs);
+                        String context = buildConversationContext(agent, currentTick, pairMessageCount);
                         String tradeCtx = buildTradeContext(agent);
                         return Map.entry(agent.id(),
                                 llmService.escalateDecision(agent, spatial, context, currentTick, tradeCtx));
@@ -216,11 +216,12 @@ public class DecisionPhase implements TickPhase {
                 AgentAction action = entry.getValue().join();
                 if (action instanceof AgentAction.Idle) continue;
 
-                // Enforce no double-texting
+                // Enforce max 3 messages per direction per pair per tick
                 if (action instanceof AgentAction.SendMessage sm) {
                     String pair = entry.getKey() + ":" + sm.targetAgentId();
-                    if (sentPairs.contains(pair)) continue;
-                    sentPairs.add(pair);
+                    int count = pairMessageCount.getOrDefault(pair, 0);
+                    if (count >= 3) continue; // already sent 3 messages to this agent
+                    pairMessageCount.merge(pair, 1, Integer::sum);
                 }
 
                 interactionActions.add(Map.entry(entry.getKey(), action));
@@ -254,7 +255,7 @@ public class DecisionPhase implements TickPhase {
     /**
      * Find agents who have messages from specific senders they haven't replied to yet.
      */
-    private List<Agent> findAgentsNeedingResponse(int currentTick, Set<String> sentPairs) {
+    private List<Agent> findAgentsNeedingResponse(int currentTick, Map<String, Integer> pairMessageCount) {
         // Also check pending trade offers
         Set<String> agentsWithOffers = new HashSet<>();
         for (var agent : agentDao.getAllAgents()) {
@@ -279,9 +280,11 @@ public class DecisionPhase implements TickPhase {
                         if (m.channel() != com.measim.model.communication.Message.Channel.AGENT_TO_AGENT
                                 && m.channel() != com.measim.model.communication.Message.Channel.BROADCAST) continue;
 
-                        // Have I replied to this sender?
-                        if (!sentPairs.contains(id + ":" + m.senderId())) {
-                            return true;
+                        // Have I replied to this sender? (they sent more than I've replied)
+                        int theyToMe = pairMessageCount.getOrDefault(m.senderId() + ":" + id, 0);
+                        int meToThem = pairMessageCount.getOrDefault(id + ":" + m.senderId(), 0);
+                        if (theyToMe > meToThem && meToThem < 3) {
+                            return true; // they said something I haven't responded to yet
                         }
                     }
                     return false;
@@ -293,7 +296,7 @@ public class DecisionPhase implements TickPhase {
     /**
      * Build conversation context grouped by partner, showing who needs a response.
      */
-    private String buildConversationContext(Agent agent, int currentTick, Set<String> sentPairs) {
+    private String buildConversationContext(Agent agent, int currentTick, Map<String, Integer> pairMessageCount) {
         StringBuilder sb = new StringBuilder();
         sb.append("Respond to messages below. Pick the most important to respond to.\n");
         sb.append("Actions: SEND_MESSAGE, OFFER_TRADE, ACCEPT_TRADE, OFFER_JOB, ACCEPT_JOB, ");
@@ -317,8 +320,12 @@ public class DecisionPhase implements TickPhase {
             if (partner == null || "ALL_AT_TILE".equals(partner)) partner = "_broadcast";
             byPartner.computeIfAbsent(partner, k -> new ArrayList<>()).add(m);
 
-            if (!m.senderId().equals(agent.id()) && !sentPairs.contains(agent.id() + ":" + m.senderId())) {
-                if (!needsReply.contains(m.senderId())) needsReply.add(m.senderId());
+            if (!m.senderId().equals(agent.id())) {
+                int theyToMe = pairMessageCount.getOrDefault(m.senderId() + ":" + agent.id(), 0);
+                int meToThem = pairMessageCount.getOrDefault(agent.id() + ":" + m.senderId(), 0);
+                if (theyToMe > meToThem && meToThem < 3) {
+                    if (!needsReply.contains(m.senderId())) needsReply.add(m.senderId());
+                }
             }
         }
 
