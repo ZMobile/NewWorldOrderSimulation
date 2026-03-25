@@ -72,7 +72,13 @@ public final class ArchetypePrompts {
                 {"action": "ACCEPT_CONTRACT", "proposerAgent": "agent_42", "contractType": "RENTAL"}
                 {"action": "TERMINATE_CONTRACT", "contractId": "contract_123", "reason": "Better opportunity elsewhere"}
                 {"action": "CLAIM_PROPERTY", "q": N, "r": N}  (Must be within 2 tiles of your location)
+                {"action": "ACCEPT_PROPOSAL", "proposalId": "proposal_abc123"}
+                {"action": "REJECT_PROPOSAL", "proposalId": "proposal_abc123"}
                 {"action": "IDLE"}
+
+                INFRASTRUCTURE: When you BUILD_INFRASTRUCTURE, the GM evaluates and sends you a QUOTE
+                with the cost. You then ACCEPT_PROPOSAL or REJECT_PROPOSAL. You are NOT committed until you accept.
+                The GM reveals cost and feasibility only — not risk profiles or hidden consequences.
 
                 CONTRACTS: All contracts are BINDING. Wages auto-garnish each tick. Trades swap atomically.
                 Either party can TERMINATE_CONTRACT but obligations up to that point are settled.

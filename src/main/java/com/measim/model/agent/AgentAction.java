@@ -57,4 +57,10 @@ public sealed interface AgentAction {
 
     /** Register a property claim on a tile (first-come-first-served, validated by Governance GM). */
     record ClaimProperty(HexCoord tile) implements AgentAction {}
+
+    /** Accept a pending GM proposal (infrastructure, service) after seeing the quote. */
+    record AcceptProposal(String proposalId) implements AgentAction {}
+
+    /** Reject a pending GM proposal. */
+    record RejectProposal(String proposalId) implements AgentAction {}
 }

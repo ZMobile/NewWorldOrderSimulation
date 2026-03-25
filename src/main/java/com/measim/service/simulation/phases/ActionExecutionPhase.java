@@ -57,6 +57,9 @@ public class ActionExecutionPhase implements TickPhase {
     record PendingContractOffer(String proposerId, String targetId, String contractType, double valuePerTick, int durationTicks, String terms, int tick) {}
     private final java.util.concurrent.ConcurrentHashMap<String, PendingJobOffer> pendingJobOffers = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<String, PendingContractOffer> pendingContractOffers = new java.util.concurrent.ConcurrentHashMap<>();
+
+    // GM proposals awaiting agent acceptance (infrastructure, services)
+    private final java.util.concurrent.ConcurrentHashMap<String, com.measim.model.gamemaster.PendingProposal> pendingGmProposals = new java.util.concurrent.ConcurrentHashMap<>();
     private final com.measim.service.communication.CommunicationService commService;
     private final com.measim.service.economy.CreditFlowService creditFlowService;
     private final SimulationConfig config;
@@ -315,43 +318,48 @@ public class ActionExecutionPhase implements TickPhase {
                 }
             }
             case AgentAction.BuildInfrastructure buildInfra -> {
-                // Must own a property claim on the tile to build
+                // Two-phase: GM evaluates and returns a quote, agent accepts/rejects later
                 var loc = buildInfra.location() != null ? buildInfra.location() : agent.state().location();
-                var existingClaims = propertyService.getAgentProperties(agent.id());
-                boolean hasClaim = existingClaims.stream().anyMatch(c -> c.tile().equals(loc));
 
-                if (!hasClaim) {
-                    // Auto-purchase a claim if affordable
-                    var claimOpt = propertyService.purchaseClaim(agent.id(), loc, 1, currentTick);
-                    hasClaim = claimOpt.isPresent();
-                    if (claimOpt.isPresent()) {
-                        agent.addMemory(new MemoryEntry(currentTick, "ACTION",
-                                "Purchased property claim at " + loc, 0.4, null,
-                                -propertyService.getClaimBasePrice(loc)));
-                    }
-                }
+                var infraProposal = new com.measim.model.gamemaster.InfrastructureProposal(
+                        agent.id(), buildInfra.typeId(),
+                        "Agent-proposed infrastructure",
+                        "Available local materials",
+                        loc, buildInfra.connectTo(),
+                        "Transport resources from connected tile",
+                        Math.min(agent.state().credits() * 0.3, 1000));
 
-                if (hasClaim) {
-                    var proposal = new com.measim.model.gamemaster.InfrastructureProposal(
-                            agent.id(), buildInfra.typeId(),
-                            "Agent-proposed infrastructure",
-                            "Available local materials",
-                            loc, buildInfra.connectTo(),
-                            "Transport resources from connected tile",
-                            Math.min(agent.state().credits() * 0.3, 1000));
+                var typeOpt = gameMasterService.evaluateInfrastructureProposal(infraProposal, currentTick);
+                if (typeOpt.isPresent()) {
+                    var infraType = typeOpt.get();
+                    // Create pending proposal — agent sees cost, decides later
+                    String proposalId = "proposal_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+                    // Public response: only cost and feasibility, no risk/byproduct info
+                    String publicResponse = String.format("Feasible: '%s'. Construction cost: %.0f credits, time: %d ticks.",
+                            infraType.name(), infraType.constructionCost(), 0);
 
-                    var typeOpt = gameMasterService.evaluateInfrastructureProposal(proposal, currentTick);
-                    if (typeOpt.isPresent()) {
-                        var result = infrastructureService.build(agent.id(), typeOpt.get().id(),
-                                loc, buildInfra.connectTo(), currentTick);
-                        if (result.success()) {
-                            agent.state().addExperience("infrastructure");
-                            agent.state().recordSuccess("infrastructure");
-                            agent.addMemory(new MemoryEntry(currentTick, "ACTION",
-                                    "Built " + result.infrastructure().type().name(),
-                                    0.8, null, -result.infrastructure().type().constructionCost()));
-                        }
-                    }
+                    var pending = new com.measim.model.gamemaster.PendingProposal(
+                            proposalId, agent.id(),
+                            com.measim.model.gamemaster.PendingProposal.ProposalType.INFRASTRUCTURE,
+                            infraType.name(), infraType.description(), loc,
+                            infraType.constructionCost(), java.util.Map.of(),
+                            0, publicResponse, infraType, currentTick);
+                    pendingGmProposals.put(proposalId, pending);
+
+                    // Notify agent of the quote
+                    commService.sendAgentMessage("GAME_MASTER", agent.id(),
+                            "GM QUOTE: " + pending.agentSummary(),
+                            com.measim.model.communication.Message.MessageType.EVALUATION_RESULT, currentTick);
+                    agent.addMemory(new MemoryEntry(currentTick, "GM_QUOTE",
+                            "Infrastructure quote: " + infraType.name() + " for " +
+                            String.format("%.0f", infraType.constructionCost()) + " credits",
+                            0.5, null, 0));
+                } else {
+                    commService.sendAgentMessage("GAME_MASTER", agent.id(),
+                            "GM DENIED: Infrastructure proposal not feasible at this location.",
+                            com.measim.model.communication.Message.MessageType.REJECTION, currentTick);
+                    agent.addMemory(new MemoryEntry(currentTick, "GM_DENIAL",
+                            "Infrastructure proposal denied", 0.4, null, 0));
                 }
             }
             case AgentAction.CreateService cs -> {
@@ -566,6 +574,50 @@ public class ActionExecutionPhase implements TickPhase {
                 agent.addMemory(new MemoryEntry(currentTick, "CONTRACT",
                         "Terminated contract " + terminate.contractId() + ": " + terminate.reason(),
                         0.5, null, 0));
+            }
+            case AgentAction.AcceptProposal accept -> {
+                var proposal = pendingGmProposals.remove(accept.proposalId());
+                if (proposal != null && proposal.agentId().equals(agent.id())) {
+                    if (proposal.type() == com.measim.model.gamemaster.PendingProposal.ProposalType.INFRASTRUCTURE) {
+                        // Check property claim
+                        var existingClaims = propertyService.getAgentProperties(agent.id());
+                        boolean hasClaim = existingClaims.stream().anyMatch(c -> c.tile().equals(proposal.location()));
+                        if (!hasClaim) {
+                            var claimOpt = propertyService.purchaseClaim(agent.id(), proposal.location(), 1, currentTick);
+                            hasClaim = claimOpt.isPresent();
+                        }
+                        if (hasClaim && agent.state().credits() >= proposal.creditCost()) {
+                            var result = infrastructureService.build(agent.id(), proposal.infraType().id(),
+                                    proposal.location(), null, currentTick);
+                            if (result.success()) {
+                                agent.state().addExperience("infrastructure");
+                                agent.state().recordSuccess("infrastructure");
+                                agent.addMemory(new MemoryEntry(currentTick, "ACTION",
+                                        "Built " + proposal.name() + " for " + String.format("%.0f", proposal.creditCost()) + " credits",
+                                        0.8, null, -proposal.creditCost()));
+                                commService.sendAgentMessage("GAME_MASTER", agent.id(),
+                                        "Construction approved and underway: " + proposal.name(),
+                                        com.measim.model.communication.Message.MessageType.EVALUATION_RESULT, currentTick);
+                            }
+                        } else {
+                            agent.addMemory(new MemoryEntry(currentTick, "ACTION",
+                                    "Cannot build " + proposal.name() + ": " +
+                                    (!hasClaim ? "no property claim" : "insufficient credits"),
+                                    0.4, null, 0));
+                        }
+                    }
+                    proposal.accept();
+                }
+            }
+            case AgentAction.RejectProposal reject -> {
+                var proposal = pendingGmProposals.remove(reject.proposalId());
+                if (proposal != null) {
+                    proposal.reject();
+                    agent.addMemory(new MemoryEntry(currentTick, "ACTION",
+                            "Rejected GM proposal: " + proposal.name() + " (cost: " +
+                            String.format("%.0f", proposal.creditCost()) + ")",
+                            0.4, null, 0));
+                }
             }
             case AgentAction.ClaimProperty claim -> {
                 // Nature GM quick check: physically possible?

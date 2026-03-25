@@ -123,6 +123,10 @@ public final class LlmResponseParser {
                         root.path("reason").asText(""));
                 case "CLAIM_PROPERTY" -> new AgentAction.ClaimProperty(
                         new HexCoord(root.path("q").asInt(), root.path("r").asInt()));
+                case "ACCEPT_PROPOSAL" -> new AgentAction.AcceptProposal(
+                        root.path("proposalId").asText());
+                case "REJECT_PROPOSAL" -> new AgentAction.RejectProposal(
+                        root.path("proposalId").asText());
                 default -> new AgentAction.Idle();
             };
         } catch (Exception e) {
