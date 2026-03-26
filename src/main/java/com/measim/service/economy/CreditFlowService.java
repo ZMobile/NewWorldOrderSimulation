@@ -10,6 +10,8 @@ public interface CreditFlowService {
     double distributeUbi(int eligiblePopulation);
     /** Add public revenue to the UBI pool (reserve premiums, property sales, extraction fees). */
     void addPublicRevenue(double amount, String source);
+    /** Drain public revenue pool for reserve use (capitalism mode). Returns amount drained. */
+    double drainPublicRevenueToReserve();
     double ubiPool();
     double environmentalRemediationFund();
     double commonsInvestmentFund();

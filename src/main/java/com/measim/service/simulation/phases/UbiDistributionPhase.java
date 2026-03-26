@@ -29,7 +29,13 @@ public class UbiDistributionPhase implements TickPhase {
 
     @Override
     public void execute(int currentTick) {
-        if (!config.measEnabled() || !config.ubiEnabled()) return;
+        // Capitalism mode: public revenue (property purchases) goes to reserve, not UBI
+        if (!config.measEnabled()) {
+            double drained = creditFlowService.drainPublicRevenueToReserve();
+            // Credits strengthen reserve backing instead of being redistributed
+            return;
+        }
+        if (!config.ubiEnabled()) return;
         if (currentTick % config.ubiDistributionInterval() != 0) return;
         int eligible = agentDao.getAgentCount();
         double poolBefore = creditFlowService.ubiPool();
