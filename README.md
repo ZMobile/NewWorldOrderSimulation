@@ -14,7 +14,9 @@ I'm **Jack Zante Hays**, an AI Specialist and Senior Software Engineer at PayPal
 
 In 2023, I automated $30M of technical debt in a single week, becoming the first named inventor of the PayPal patent **"Recursive Artificial Intelligence Code Fix Circuit."** Now I'm targeting billions of dollars of technical debt remediation per month via AI automation. I work on self-fixing software architecture, ticket handling automation, and systems where AI doesn't just assist developers — it automates entire categories of engineering labor.
 
-It's this work, entirely dedicated to maximum productivity, and the growing controversy around AI's impact on employment, that led me here. When your job is optimizing productivity to phase out human labor where possible, you start thinking about what happens to the system that depends on human labor to distribute money. I suspect our current trajectory — AI and robotics advancing faster than economic systems can adapt — may lead to capitalism's collapse. Not from external revolution, but from its own success at optimization.
+Here's the paradox: humanity faces more problems than humans alone can solve — climate change, resource depletion, infrastructure decay. Maximizing our collective cognitive and productive capacity through AI isn't just useful, it's necessary. In an ideal system, work like mine accelerates civilization's ability to solve these problems. But in today's system, the same automation that could save us instead threatens to destabilize the economic foundation that keeps society functioning.
+
+It's this contradiction that led me here. When your job is optimizing productivity to phase out human labor where possible, you start thinking about what happens to the system that depends on human labor to distribute money. I suspect our current trajectory — AI and robotics advancing faster than economic systems can adapt — may lead to capitalism's collapse. Not from external revolution, but from its own success at optimization.
 
 MEAS is my attempt to design what comes next, before we need it in a crisis.
 
