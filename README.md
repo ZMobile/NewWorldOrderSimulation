@@ -8,6 +8,18 @@ We call it **MEAS** — the Meritocratic Externality-Aware Economic System. And 
 
 ---
 
+## About the Author
+
+I'm **Jack Zante Hays**, AI Specialist and Senior Software Engineer at PayPal on the Developer Productivity Engineering — DevOps AI Tools team. My work centers on applying AI to automate code at scale. I oversee tools that write code for our engineers — Claude Code, Cursor, and GitHub Copilot — and build systems that make software engineer itself.
+
+In 2023, I automated $30M of technical debt in a single week, becoming the first named inventor of the PayPal patent **"Recursive Artificial Intelligence Code Fix Circuit."** Now I'm targeting billions of dollars of technical debt remediation per month via AI automation. I work on self-fixing software architecture, ticket handling automation, and systems where AI doesn't just assist developers — it replaces entire categories of engineering labor.
+
+It's this work, entirely dedicated to maximum productivity, and the growing controversy around AI's impact on employment, that led me here. When your job is making human labor obsolete as efficiently as possible, you start thinking about what happens to the system that depends on human labor to distribute money. I suspect our current trajectory — AI and robotics advancing faster than economic systems can adapt — may lead to capitalism's collapse. Not from external revolution, but from its own success at optimization.
+
+MEAS is my attempt to design what comes next, before we need it in a crisis.
+
+---
+
 ## The Problem: Capitalism Has a Fatal Bug
 
 Capitalism is the most successful economic system ever deployed. It has a single brilliant design pattern at its core: **incentive alignment through gamification**. Even purely selfish actors are "tricked" into producing value, because the system rewards value creation with capital. This is capitalism's killer feature, and any replacement must preserve it.
@@ -472,6 +484,22 @@ All core systems built, wired, and compiling:
 | `docs/DESIGN_CONTEXT.md` | Decision record — the *why* behind every design choice |
 | `docs/MEAS_SYSTEM_SPEC.md` | Full specification of the economic system |
 | `docs/MEASIM_ARCHITECTURE.md` | Java application architecture for the simulator |
+
+---
+
+## Help Test This
+
+A full 50-year simulation with 200 agents and multi-round conversations costs approximately **$6,000 in API credits** at current Anthropic pricing. I don't have the funds to run comprehensive tests myself, so I'm releasing this open source.
+
+If you believe economic systems should be engineered, not endured — here's how to help:
+
+1. **Run simulations.** Run both MEAS-enabled and pure capitalism (MEAS off) with the same seed. Compare Gini coefficients, satisfaction, environmental health, entrepreneurship rates.
+2. **Identify flaws.** When agents exploit loopholes, when UBI is insufficient, when the scoring formulas produce perverse incentives — document what you find.
+3. **Fix the formulas.** The MEAS scoring functions are in `ScoringServiceImpl.java`. Adjust the curves, change the thresholds, test again. The simulation exists to find bugs in the economic design.
+4. **Play as an agent.** Use Player Mode to experience the system from inside. Does it feel fair? Can you succeed as a Worker? Can you game it as an Exploiter?
+5. **Share your insights.** Email me at **h.zante2011@gmail.com** with simulation results, formula improvements, or systemic flaws you've identified.
+
+The goal isn't to get this right on the first try. It's to iterate — propose, simulate, find the bugs, fix them — until the system is robust enough to take seriously. That's how engineering works. Economics should work the same way.
 
 ---
 
