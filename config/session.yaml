@@ -1,5 +1,5 @@
 world:
-  seed: 42
+  seed: 43
   width: 50
   height: 50
   resourceDensity: 0.3
@@ -26,12 +26,12 @@ meas:
 
 llm:
   provider: "anthropic"
-  apiKey: "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"
+  apiKey: "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"
   apiBaseUrl: "https://api.anthropic.com"
   agentModel: "claude-sonnet-4-6"
   complexModel: "claude-sonnet-4-6"
   gameMasterModel: "claude-sonnet-4-6"
-  maxAgentCallsPerTick: 50
+  maxAgentCallsPerTick: 9999
   maxGameMasterCallsPerTick: 20
   totalBudgetUsd: 50.0
   cacheEnabled: true
@@ -39,6 +39,6 @@ llm:
 
 simulation:
   ticksPerYear: 12
-  totalYears: 10
+  totalYears: 50
   snapshotInterval: 12
   metricsInterval: 1
