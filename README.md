@@ -505,4 +505,4 @@ The goal isn't to get this right on the first try. It's to iterate — propose, 
 
 ## License
 
-This project is currently in development. License TBD.
+Copyright 2024-2026 Jack Zante Hays. Licensed under the [Apache License 2.0](LICENSE).
