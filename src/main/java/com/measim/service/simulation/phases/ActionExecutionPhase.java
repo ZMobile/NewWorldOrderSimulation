@@ -214,8 +214,9 @@ public class ActionExecutionPhase implements TickPhase {
         // that flows to UBI pool. Agents with very low credits are exempt (subsistence foraging).
         boolean ownsThisTile = propertyService.getAgentProperties(agent.id()).stream()
                 .anyMatch(c -> c.tile().equals(loc));
-        if (!ownsThisTile && agent.state().credits() > 50 && !tile.resources().isEmpty()) {
-            double fee = 0.5; // small royalty for public resource use
+        // Extraction royalty on public land — MEAS only (pure capitalism = free extraction)
+        if (config.measEnabled() && !ownsThisTile && agent.state().credits() > 50 && !tile.resources().isEmpty()) {
+            double fee = 0.5;
             if (agent.state().spendCredits(fee)) {
                 creditFlowService.addPublicRevenue(fee, "extraction_royalty");
             }

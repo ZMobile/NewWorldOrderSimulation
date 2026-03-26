@@ -64,6 +64,8 @@ public class CreditFlowServiceImpl implements CreditFlowService {
 
     @Override
     public void addPublicRevenue(double amount, String source) {
+        // In pure capitalism mode, public revenue has nowhere to go — credits are destroyed
+        // (no UBI pool, no redistribution). This is intentional for comparison.
         if (amount > 0) ubiPool += amount;
     }
 

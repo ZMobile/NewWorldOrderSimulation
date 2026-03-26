@@ -32,9 +32,18 @@ public class UbiDistributionPhase implements TickPhase {
         if (!config.measEnabled() || !config.ubiEnabled()) return;
         if (currentTick % config.ubiDistributionInterval() != 0) return;
         int eligible = agentDao.getAgentCount();
+        double poolBefore = creditFlowService.ubiPool();
         double perCapita = creditFlowService.distributeUbi(eligible);
         if (perCapita > 0) {
-            for (var agent : agentDao.getAllAgents()) agent.state().addCredits(perCapita);
+            for (var agent : agentDao.getAllAgents()) {
+                agent.state().addCredits(perCapita);
+                agent.addMemory(new com.measim.model.agent.MemoryEntry(currentTick, "UBI",
+                        String.format("Received %.2f credits UBI (pool was %.0f, %d eligible agents). " +
+                                "Pool funded by: property purchases, extraction royalties, transaction taxes, " +
+                                "RC wealth redistribution, LD automation diversion.",
+                                perCapita, poolBefore, eligible),
+                        0.3, null, perCapita));
+            }
             eventBus.publish(new EventBus.UbiDistributed(currentTick, perCapita, eligible));
         }
     }
