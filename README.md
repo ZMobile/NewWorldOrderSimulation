@@ -206,52 +206,6 @@ Every scenario runs in pairs: **MEAS enabled vs. baseline capitalism** with iden
 Java 21+ | Gradle | Guice DI | JavaFX | Claude API
 ```
 
-Layered architecture: **model → dao → service → ui**
-
-```
-com.measim
-├── model/                Pure data classes
-│   ├── world/            HexCoord, HexGrid, Tile, Terrain, Environment
-│   ├── economy/          Resources, Products, Orders, Transactions
-│   ├── scoring/          ScoreVector, ModifierSet, AuditEntry, SectorBaseline
-│   ├── agent/            Agent, State, Identity, 18 Archetypes, Memory, Actions
-│   ├── gamemaster/       Discoveries, TechTree, WorldEvents, NovelActions, InfrastructureProposals
-│   ├── governance/       Government, Proposals, Disputes
-│   ├── infrastructure/   Infrastructure, InfrastructureType, Effects, Constraints
-│   ├── risk/             Risk, RiskProfile, RiskEvolutionModel, PerceivedRisk, RiskEvent
-│   ├── communication/    Message, Conversation (observable agent/GM dialogue)
-│   ├── llm/              LlmRequest, LlmResponse
-│   ├── robot/            RobotUnit
-│   ├── event/            EventBus
-│   └── config/           SimulationConfig (YAML)
-├── dao/                  Data access (interface + impl, Guice-injected)
-│   16 DAOs: World, Agent, Market, Audit, ProductionChain, Metrics, LLM,
-│   TechnologyRegistry, Government, Infrastructure, Communication, Risk,
-│   Externality, Service, Property, Contract
-├── service/              Business logic (interface + impl)
-│   ├── world/            Generation, Environment, Pathfinding
-│   ├── economy/          Production, CreditFlow (realistic: no fake credit injection)
-│   ├── scoring/          MEAS scoring engine (fully deterministic, all 5 axes)
-│   ├── agent/            Decision engine (risk-adjusted), Spawning
-│   ├── llm/              Claude API client, archetype prompts, response parsing, cost tracking
-│   ├── gamemaster/       Full DM: research, infrastructure eval, novel actions, world events, coherence
-│   ├── governance/       Governance GM (reserve, audit, infrastructure approval)
-│   ├── infrastructure/   Build validation, resource flow, maintenance, GM-dynamic types
-│   ├── risk/             Evolution model evaluation, cascade propagation, consequence application
-│   ├── externality/      Byproduct processing, true vs measured vs perceived pollution
-│   ├── communication/    Agent-to-agent, agent-to-GM, observable thought logging
-│   ├── agentservice/     Agent-created services (banking, logistics, etc.)
-│   ├── contract/         Work relations, rental, trade agreements
-│   ├── property/         Tile claims, purchase, rent, transfer
-│   ├── simulation/       Tick loop (12 phases via Guice Multibinder)
-│   ├── metrics/          Gini, satisfaction, CSV export
-│   ├── snapshot/         JSON state persistence
-│   └── comparison/       MEAS vs baseline differential analysis
-└── ui/
-    ├── cli/              Main entry point, Guice bootstrap
-    └── fx/               JavaFX hex renderer, dashboard, inspector
-```
-
 ### The Game Master as Physics Engine
 
 The GM is the simulation's DM. Crucially:
@@ -377,6 +331,12 @@ On Windows with Java 21 not on PATH:
 ```powershell
 & "C:\Program Files\Java\jdk-21\bin\java.exe" -jar build\libs\measim-0.1.0-all.jar --visualize
 ```
+
+### Simulation Modes
+
+- **Player Mode**: Play as one of the agents. Enable in the launcher, choose your archetype. You see the same context as AI agents (spatial info, messages, trade offers, GM quotes) and input actions via a control panel with quick-action buttons. The simulation pauses on your turn. All other agents continue with LLM.
+- **Pure Capitalism Mode**: Toggle MEAS off for pure capitalism comparison — no scoring, no UBI, no extraction royalties, no redistribution. Credits vanish on property purchases instead of funding UBI.
+- **UBI Breakdown Visibility**: Agents receive a memory entry each UBI distribution showing: amount received, pool size, eligible count, and funding sources.
 
 ### LLM Configuration
 
