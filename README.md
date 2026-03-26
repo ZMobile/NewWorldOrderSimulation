@@ -10,7 +10,7 @@ We call it **MEAS** — the Meritocratic Externality-Aware Economic System. And 
 
 ## About the Author
 
-I'm **Jack Zante Hays**, AI Specialist and Senior Software Engineer at PayPal on the Developer Productivity Engineering — DevOps AI Tools team. My work centers on applying AI to automate code at scale. I oversee tools that write code for our engineers — Claude Code, Cursor, and GitHub Copilot — and build systems that make software engineer itself.
+I'm **Jack Zante Hays**, an AI Specialist and Senior Software Engineer at PayPal on the Developer Productivity Engineering — DevOps AI Tools team. My work centers on applying AI to automate engineering at scale — primarily code, but increasingly broader. I oversee tools that write code for our engineers — Claude Code, Cursor, and GitHub Copilot — and build systems that make software engineer itself.
 
 In 2023, I automated $30M of technical debt in a single week, becoming the first named inventor of the PayPal patent **"Recursive Artificial Intelligence Code Fix Circuit."** Now I'm targeting billions of dollars of technical debt remediation per month via AI automation. I work on self-fixing software architecture, ticket handling automation, and systems where AI doesn't just assist developers — it replaces entire categories of engineering labor.
 
