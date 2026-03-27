@@ -485,6 +485,7 @@ All core systems built, wired, and compiling:
 
 | Document | Contents |
 |----------|----------|
+| `MeaSim_Policy_Abstract.pdf` | Policy abstract: challenge, proposed solution, implementation pathway, expected impact |
 | `docs/DESIGN_CONTEXT.md` | Decision record — the *why* behind every design choice |
 | `docs/MEAS_SYSTEM_SPEC.md` | Full specification of the economic system |
 | `docs/MEASIM_ARCHITECTURE.md` | Java application architecture for the simulator |
