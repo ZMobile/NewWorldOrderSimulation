@@ -6,6 +6,8 @@ This project proposes and simulates a replacement for capitalism. Not a patch. N
 
 We call it **MEAS** — the Meritocratic Externality-Aware Economic System. And we built a full agent-based simulator called **MeaSim** to test whether it actually works before anyone tries it in the real world.
 
+![MeaSim Visualizer](screenshot.png)
+
 ---
 
 ## About the Author
