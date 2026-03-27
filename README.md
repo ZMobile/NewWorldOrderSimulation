@@ -350,7 +350,7 @@ On Windows with Java 21 not on PATH:
 
 ### Simulation Modes
 
-- **Player Mode**: Play as one of the agents. Enable in the launcher, choose your archetype. You see the same context as AI agents (spatial info, messages, trade offers, GM quotes) and input actions via a control panel with quick-action buttons. The simulation pauses on your turn. All other agents continue with LLM.
+- **Player Mode**: Play as one of the agents. Enable in the launcher, choose your archetype. Action buttons with form dialogs (Move, Claim Land, Trade, Build, Offer Job, Buy Robot) plus a chat interface for messaging agents and giving natural language commands to the GM ("I want to build a dirt pathway, budget 200"). Multiple actions per turn. The simulation pauses on your turn while all other agents continue with LLM.
 - **Pure Capitalism Mode**: Toggle MEAS off for pure capitalism comparison — no scoring, no UBI, no extraction royalties, no redistribution. Credits vanish on property purchases instead of funding UBI.
 - **UBI Breakdown Visibility**: Agents receive a memory entry each UBI distribution showing: amount received, pool size, eligible count, and funding sources.
 

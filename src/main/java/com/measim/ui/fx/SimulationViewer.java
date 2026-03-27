@@ -210,28 +210,10 @@ public class SimulationViewer extends Application {
         refreshTimer.setCycleCount(javafx.animation.Animation.INDEFINITE);
         refreshTimer.play();
         primaryStage.setOnCloseRequest(ev -> {
-            ev.consume();
-            try {
-                javafx.scene.control.Alert confirm = new javafx.scene.control.Alert(
-                        javafx.scene.control.Alert.AlertType.CONFIRMATION);
-                confirm.setTitle("Close Simulation");
-                confirm.setHeaderText("End simulation and exit?");
-                confirm.setContentText("The simulation will be terminated. Output files have been saved.");
-                confirm.initOwner(primaryStage);
-                var result = confirm.showAndWait();
-                if (result.isPresent() && result.get() == javafx.scene.control.ButtonType.OK) {
-                    refreshTimer.stop();
-                    liveConsolePanel.restoreStdout();
-                    javafx.application.Platform.exit();
-                    System.exit(0);
-                }
-            } catch (Exception ex) {
-                // If dialog fails, just exit
-                refreshTimer.stop();
-                liveConsolePanel.restoreStdout();
-                javafx.application.Platform.exit();
-                System.exit(0);
-            }
+            refreshTimer.stop();
+            liveConsolePanel.restoreStdout();
+            javafx.application.Platform.exit();
+            System.exit(0);
         });
     }
 
