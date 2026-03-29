@@ -33,9 +33,9 @@ import java.util.concurrent.CompletableFuture;
  *   <li><b>NATURE GM</b> — physics engine: infrastructure evaluation, risk profiles,
  *       research adjudication, world events, coherence audits. Cannot be influenced by
  *       agents, politics, or economics.</li>
- *   <li><b>GOVERNANCE GM</b> — protocol enforcer: reserve management, MEAS scoring audits,
+ *   <li><b>GOVERNANCE GM</b> — protocol enforcer: reserve management, MERIT scoring audits,
  *       property claim registration, public infrastructure approval (future).
- *       Enforces MEAS protocol mechanically, does not make policy.</li>
+ *       Enforces MERIT protocol mechanically, does not make policy.</li>
  * </ul>
  * Both contexts use the same LLM models (Sonnet for routine, Opus for yearly coherence).
  * The split is in prompts and tool access, not model selection.
@@ -732,7 +732,7 @@ public class GameMasterServiceImpl implements GameMasterService {
             String archetype = agent != null ? agent.identity().archetype().name() : "Unknown";
 
             String systemPrompt = String.format("""
-                    You are agent %s (archetype: %s) in MeaSim. The Game Master asked you a clarification
+                    You are agent %s (archetype: %s) in MeritSim. The Game Master asked you a clarification
                     question about your proposal. Answer based on what you would reasonably know —
                     your plans, your intentions, your materials, your maintenance approach.
                     Keep it brief (1-2 sentences). Only output your answer, no JSON.

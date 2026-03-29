@@ -39,7 +39,7 @@ public class LauncherWindow extends Application {
         SimulationConfig defaults = SimulationConfig.load(Path.of("config/default.yaml"));
 
         // Title
-        Label title = new Label("MeaSim — New World Order Simulation");
+        Label title = new Label("MeritSim — New World Order Simulation");
         title.setFont(Font.font("System", FontWeight.BOLD, 20));
 
         Label subtitle = new Label("Configure simulation parameters, then press Start");
@@ -76,11 +76,11 @@ public class LauncherWindow extends Application {
         agentGrid.addRow(0, new Label("Count:"), agentCount);
         agentGrid.addRow(1, new Label("Years:"), totalYears);
 
-        // MEAS settings
-        Label measHeader = new Label("MEAS System");
+        // MERIT settings
+        Label measHeader = new Label("MERIT System");
         measHeader.setFont(Font.font("System", FontWeight.BOLD, 14));
 
-        CheckBox measEnabled = new CheckBox("MEAS scoring enabled");
+        CheckBox measEnabled = new CheckBox("MERIT scoring enabled");
         measEnabled.setSelected(defaults.measEnabled());
         Label measHint = new Label("Uncheck to run baseline capitalism for comparison");
         measHint.setStyle("-fx-text-fill: #888; -fx-font-size: 11;");
@@ -224,7 +224,7 @@ public class LauncherWindow extends Application {
         scroll.setFitToWidth(true);
 
         Scene scene = new Scene(scroll, 520, 950);
-        stage.setTitle("MeaSim Launcher");
+        stage.setTitle("MeritSim Launcher");
         stage.setScene(scene);
         stage.show();
     }

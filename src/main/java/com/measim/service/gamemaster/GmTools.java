@@ -51,7 +51,7 @@ public class GmTools {
                                 "required", List.of("q", "r"))),
 
                 new LlmRequest.ToolDefinition("inspect_agent",
-                        "Get detailed info about a specific agent: archetype, credits, inventory, location, employment, experience, robots, MEAS scores, satisfaction.",
+                        "Get detailed info about a specific agent: archetype, credits, inventory, location, employment, experience, robots, MERIT scores, satisfaction.",
                         Map.of("type", "object",
                                 "properties", Map.of(
                                         "agent_id", Map.of("type", "string", "description", "The agent's ID")),
@@ -211,9 +211,9 @@ public class GmTools {
             sb.append("\n");
         }
 
-        // MEAS scores
+        // MERIT scores
         var sv = state.scoreVector();
-        sb.append(String.format("MEAS: EF=%.3f, CC=%.3f, LD=%.3f, RC=%.3f, EP=%.3f, commons=%.2f%n",
+        sb.append(String.format("MERIT: EF=%.3f, CC=%.3f, LD=%.3f, RC=%.3f, EP=%.3f, commons=%.2f%n",
                 sv.environmentalFootprint(), sv.commonsContribution(), sv.laborDisplacement(),
                 sv.resourceConcentration(), sv.economicProductivity(), state.commonsScore()));
 

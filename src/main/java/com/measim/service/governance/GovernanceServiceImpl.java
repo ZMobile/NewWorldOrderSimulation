@@ -14,13 +14,13 @@ import jakarta.inject.Singleton;
 import java.util.UUID;
 
 /**
- * Governance in MeaSim is minimal by design.
+ * Governance in MeritSim is minimal by design.
  *
  * The 5-layer architecture:
- *   Layer 1: MEAS Protocol (automatic) — scoring, modifiers, UBI
+ *   Layer 1: MERIT Protocol (automatic) — scoring, modifiers, UBI
  *   Layer 2: Contracts (binding, automatic) — wages garnished, trades atomic
  *   Layer 3: Property (first-come-first-served) — registered via GM, simple ledger
- *   Layer 4: Governance GM (periodic) — yearly MEAS audit, reserve management
+ *   Layer 4: Governance GM (periodic) — yearly MERIT audit, reserve management
  *   Layer 5: Emergent (agent-built) — courts, police, regulations, coalitions
  *
  * This service handles only the minimal institutional functions.
@@ -45,10 +45,10 @@ public class GovernanceServiceImpl implements GovernanceService {
     @Override
     public void initializeGovernments() {
         // Single default jurisdiction covering the whole map.
-        // MEAS parameters are protocol-level — not government-specific.
+        // MERIT parameters are protocol-level — not government-specific.
         if (governmentDao.getAllGovernments().isEmpty()) {
             governmentDao.addGovernment(new Government(
-                    "default", "MEAS Protocol Zone",
+                    "default", "MERIT Protocol Zone",
                     new HexCoord(0, 0),
                     new HexCoord(config.worldWidth() - 1, config.worldHeight() - 1),
                     1.0, 1.0, 1.0));
@@ -58,7 +58,7 @@ public class GovernanceServiceImpl implements GovernanceService {
     @Override
     public void proposeFormulaChange(String agentId, String governmentId, String parameterName,
                                       double proposedValue, String description, int currentTick) {
-        // Agents can propose MEAS parameter changes.
+        // Agents can propose MERIT parameter changes.
         // These are recorded but require agent-built governance to process.
         // The Governance GM evaluates during yearly audits whether any proposals have merit.
         String id = "proposal_" + UUID.randomUUID().toString().substring(0, 8);
@@ -105,12 +105,12 @@ public class GovernanceServiceImpl implements GovernanceService {
 
     @Override
     public String getAgentGovernment(String agentId) {
-        return "default"; // single global MEAS zone
+        return "default"; // single global MERIT zone
     }
 
     @Override
     public void migrateAgent(String agentId, String targetGovernmentId) {
         // Migration is just moving — agents move freely.
-        // No government boundaries to cross in a single MEAS zone.
+        // No government boundaries to cross in a single MERIT zone.
     }
 }

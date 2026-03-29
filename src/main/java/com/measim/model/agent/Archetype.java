@@ -19,7 +19,7 @@ public enum Archetype {
     SPECULATOR(0.9, 0.8, 0.05, 0.4, 0.4, "Extreme risk tolerance. Trades assets, buys/sells property claims, exploits price differences."),
     HOMESTEADER(0.2, 0.4, 0.3, 0.4, 0.6, "Self-sufficient. Extracts, produces, and consumes locally. Minimal market participation."),
     PROVIDER(0.3, 0.5, 0.6, 0.5, 0.7, "Creates and operates services for other agents. Tests service economy dynamics."),
-    LANDLORD(0.3, 0.7, 0.1, 0.2, 0.7, "Acquires property claims and rents them. Tests property market and rent-seeking under MEAS."),
+    LANDLORD(0.3, 0.7, 0.1, 0.2, 0.7, "Acquires property claims and rents them. Tests property market and rent-seeking under MERIT."),
     ORGANIZER(0.3, 0.5, 0.7, 0.5, 0.6, "Builds lasting alliances and multi-agent agreements. Tests collective action and coordination.");
 
     private final double riskTolerance;

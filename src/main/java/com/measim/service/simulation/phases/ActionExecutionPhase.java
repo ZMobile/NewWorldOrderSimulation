@@ -25,7 +25,7 @@ import java.util.*;
  *
  * No credit injection from nowhere. Credits only enter agent accounts via:
  *   - Market sales (another agent pays you)
- *   - UBI distribution (from the pool funded by MEAS modifiers)
+ *   - UBI distribution (from the pool funded by MERIT modifiers)
  *   - Starting capital
  *
  * Each tick per agent:
@@ -214,7 +214,7 @@ public class ActionExecutionPhase implements TickPhase {
         // that flows to UBI pool. Agents with very low credits are exempt (subsistence foraging).
         boolean ownsThisTile = propertyService.getAgentProperties(agent.id()).stream()
                 .anyMatch(c -> c.tile().equals(loc));
-        // Extraction royalty on public land — MEAS only (pure capitalism = free extraction)
+        // Extraction royalty on public land — MERIT only (pure capitalism = free extraction)
         if (config.measEnabled() && !ownsThisTile && agent.state().credits() > 50 && !tile.resources().isEmpty()) {
             double fee = 0.5;
             if (agent.state().spendCredits(fee)) {

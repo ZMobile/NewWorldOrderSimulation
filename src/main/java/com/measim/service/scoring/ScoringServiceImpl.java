@@ -72,7 +72,7 @@ public class ScoringServiceImpl implements ScoringService {
     @Override
     public SectorBaseline getSectorBaseline() { return sectorBaseline; }
 
-    // --- Modifier functions (exact formulas from MEAS spec) ---
+    // --- Modifier functions (exact formulas from MERIT spec) ---
 
     double computeEfModifier(double r) {
         if (r <= 0.5) return 1.10;

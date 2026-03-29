@@ -4,9 +4,9 @@
 
 This project proposes and simulates a replacement for capitalism. Not a patch. Not a regulation. A new operating system for human civilization, designed from first principles for a world where AI and robotics have made human labor optional.
 
-We call it **MEAS** — the Meritocratic Externality-Aware Economic System. And we built a full agent-based simulator called **MeaSim** to test whether it actually works before anyone tries it in the real world.
+We call it **MERIT** — Meritocratic Economic Redistribution & Incentive Technology (formerly MEAS). And we built a full agent-based simulator called **MeritSim** to test whether it actually works before anyone tries it in the real world.
 
-![MeaSim Visualizer](screenshot.png)
+![MeritSim Visualizer](screenshot.png)
 
 ---
 
@@ -20,7 +20,7 @@ The consensus is that we face more problems than humans alone can solve — clim
 
 It's this contradiction that led me here. When your job is optimizing productivity to phase out human labor where possible, you start thinking about what happens to the system that depends on human labor to distribute money. I suspect our current trajectory — AI and robotics advancing faster than economic systems can adapt — may lead to capitalism's collapse. Not from external revolution, but from its own success at optimization.
 
-MEAS is my attempt to design what comes next, before we need it in a crisis.
+MERIT is my attempt to design what comes next, before we need it in a crisis.
 
 ---
 
@@ -54,13 +54,13 @@ If you're a software engineer, you already have the mental models to think about
 
 ---
 
-## MEAS: The Proposed System
+## MERIT: The Proposed System
 
-MEAS keeps what capitalism gets right (markets, price discovery, meritocratic incentives) and fixes what it gets wrong (externalities, concentration, labor dependency). Here's how.
+MERIT keeps what capitalism gets right (markets, price discovery, meritocratic incentives) and fixes what it gets wrong (externalities, concentration, labor dependency). Here's how.
 
 ### Layer 1: Credits (The Money Part)
 
-At the point of sale, MEAS looks like any market economy. There's a fungible currency ("credits"). You buy bread with credits. The bread seller sees credits. Markets set prices. Supply and demand work normally.
+At the point of sale, MERIT looks like any market economy. There's a fungible currency ("credits"). You buy bread with credits. The bread seller sees credits. Markets set prices. Supply and demand work normally.
 
 The magic happens *upstream* of transactions.
 
@@ -104,7 +104,7 @@ The system knows where its own formalism breaks down and uses a different enforc
 
 ### Why This Requires Computation
 
-Previous attempts at alternative economic systems (communism, central planning) failed partly because of the **economic calculation problem** — you can't centrally compute prices for a complex economy. MEAS doesn't try to. Markets still set prices. The scoring system operates *alongside* markets, not instead of them.
+Previous attempts at alternative economic systems (communism, central planning) failed partly because of the **economic calculation problem** — you can't centrally compute prices for a complex economy. MERIT doesn't try to. Markets still set prices. The scoring system operates *alongside* markets, not instead of them.
 
 But the scoring system itself requires:
 - Real-time tracking of environmental metrics across all actors
@@ -113,32 +113,32 @@ But the scoring system itself requires:
 - Sector-relative baselines recomputed as industries evolve
 - Automatic UBI scaling based on aggregate automation levels
 
-This is the kind of infrastructure that's trivial with modern computing and was impossible without it. **MEAS is the first economic system designed for the computational era.**
+This is the kind of infrastructure that's trivial with modern computing and was impossible without it. **MERIT is the first economic system designed for the computational era.**
 
 ### The 5-Layer Architecture
 
-1. **MEAS Protocol** (automatic) — Scoring, modifiers, UBI distribution. Runs every tick. No vote required.
+1. **MERIT Protocol** (automatic) — Scoring, modifiers, UBI distribution. Runs every tick. No vote required.
 2. **Contracts** (binding) — Wages auto-garnish, trades atomic, either party can terminate. Enforced by the engine.
 3. **Property** (first-come-first-served) — Registered tile claims, cost flows to UBI pool.
-4. **Governance GM** (periodic) — Yearly MEAS audit, reserve management, public infrastructure approval. Enforces protocol; doesn't make policy.
+4. **Governance GM** (periodic) — Yearly MERIT audit, reserve management, public infrastructure approval. Enforces protocol; doesn't make policy.
 5. **Emergent** — Agents build courts, police, regulations, insurance as services. Nothing is provided; everything is earned.
 
-The GM operates in two contexts: **Nature GM** (physics, risk, materials, world events — cannot be influenced by agents) and **Governance GM** (reserve management, MEAS audit, property registration, public infrastructure approval — enforces protocol, doesn't make policy).
+The GM operates in two contexts: **Nature GM** (physics, risk, materials, world events — cannot be influenced by agents) and **Governance GM** (reserve management, MERIT audit, property registration, public infrastructure approval — enforces protocol, doesn't make policy).
 
 ---
 
-## MeaSim: Testing Before Deploying
+## MeritSim: Testing Before Deploying
 
-You don't deploy a new operating system to production without testing it. MeaSim is a full agent-based simulation that runs hundreds of autonomous agents in a procedurally generated world under MEAS rules, specifically to find where the system breaks.
+You don't deploy a new operating system to production without testing it. MeritSim is a full agent-based simulation that runs hundreds of autonomous agents in a procedurally generated world under MERIT rules, specifically to find where the system breaks.
 
 ### What It Simulates
 
 - **Hexagonal tile world** with terrain, resources, environmental health, and pollution diffusion
 - **200-500 autonomous agents** across 18 personality archetypes (Optimizer, Entrepreneur, Exploiter, Free Rider, Philanthropist, etc.)
-- **Complete MEAS scoring engine** with all five axes and exact spec formulas
+- **Complete MERIT scoring engine** with all five axes and exact spec formulas
 - **Proximity-based trade** — no built-in exchange; trade is agent-to-agent or through agent-created marketplace services
 - **Robot labor** with configurable automation curves
-- **Single MEAS protocol zone** — one set of rules, emergent governance built by agents as services
+- **Single MERIT protocol zone** — one set of rules, emergent governance built by agents as services
 - **Agent messaging** — private messages (SEND_MESSAGE) and tile-local broadcasts (BROADCAST) within communication range. Conversation-pair interaction: up to 3 exchanges per pair per tick, strict no-double-texting (must wait for reply). Agents can return multiple actions per LLM call (JSON array), enabling rich multi-step turns.
 - **Technology discovery** through a Game Master LLM that adjudicates research and maintains world coherence
 
@@ -167,7 +167,7 @@ Each agent archetype is designed to stress-test a specific aspect of the system:
 | **Landlord** | Property acquisition, rent-seeking — does RC axis counter this? |
 | **Organizer** | Multi-agent alliances, collective bargaining, coordination |
 
-The distribution mirrors reality: ~15% Workers (largest group), ~7% Free Riders, ~6% each for Entrepreneurs/Providers/Artisans, smaller shares for specialized roles. This tests MEAS against a realistic population, not an entrepreneurship fantasy.
+The distribution mirrors reality: ~15% Workers (largest group), ~7% Free Riders, ~6% each for Entrepreneurs/Providers/Artisans, smaller shares for specialized roles. This tests MERIT against a realistic population, not an entrepreneurship fantasy.
 
 If the Exploiter finds a loophole, that's a bug to fix. If the Free Rider starves, UBI is miscalibrated. If the Accumulator breaks through the RC ceiling, the formula needs adjustment. If the Worker can't find stable employment, the labor market isn't functioning. If the Landlord monopolizes property, the RC axis needs tuning.
 
@@ -191,7 +191,7 @@ The simulation measures **material outcomes** (Gini, food access, environmental 
 
 ### The Game Master: An AI Dungeon Master
 
-MeaSim includes a Game Master LLM (Claude) that acts as the simulation's "Dungeon Master." It doesn't just adjudicate research — it maintains the entire world's narrative and mechanical coherence:
+MeritSim includes a Game Master LLM (Claude) that acts as the simulation's "Dungeon Master." It doesn't just adjudicate research — it maintains the entire world's narrative and mechanical coherence:
 
 - **Spontaneous world events**: Environmental disasters when health drops, market booms in healthy economies, social unrest when satisfaction is low, resource discoveries
 - **Novel agent actions**: Every archetype can attempt things outside the deterministic rules — the Artisan creates unique products, the Politician builds coalitions, the Exploiter tries novel gaming strategies. The GM adjudicates outcomes.
@@ -203,7 +203,7 @@ When no LLM API key is configured, everything falls back to deterministic probab
 
 ### What We Measure
 
-Every tick, MeaSim computes:
+Every tick, MeritSim computes:
 - **Gini coefficient** (wealth inequality — target: 0.25-0.40)
 - **Environmental health** (average tile quality — target: >0.70)
 - **Satisfaction distribution** (mean and spread)
@@ -212,7 +212,7 @@ Every tick, MeaSim computes:
 - **Innovation rate** (tech tree growth)
 - **Gaming incidents** (detected exploit attempts)
 
-Every scenario runs in pairs: **MEAS enabled vs. baseline capitalism** with identical world seeds and agent populations. The differential tells us exactly what the scoring system adds.
+Every scenario runs in pairs: **MERIT enabled vs. baseline capitalism** with identical world seeds and agent populations. The differential tells us exactly what the scoring system adds.
 
 ---
 
@@ -303,11 +303,11 @@ Service categories: financial, logistics, healthcare, education, legal, security
 | 1 | Perception | No | Agents observe environment, update risk perceptions from events |
 | 2 | Decision | **Tier 1+2** | Deterministic for all agents, then LLM escalation for eligible agents (20-50% per tick) |
 | 3 | Action | Partial | Deterministic physics (autoExtract→autoProduce) + LLM-driven actions (multi-action per call, 3 exchanges/pair/tick, no double-texting): trade, messaging, contract negotiation, infrastructure proposals + GM eval |
-| 4 | Market | No | Proximity-based trades resolve, MEAS modifiers applied, credits flow |
+| 4 | Market | No | Proximity-based trades resolve, MERIT modifiers applied, credits flow |
 | 5 | Contracts | No | Wages paid, rent collected, service subscriptions, breach detection |
 | 6 | Scoring | No | Score vectors recomputed, modifiers updated, audit trail |
 | 7 | UBI | No | Credits distributed yearly from UBI pool to all agents |
-| 8 | Governance | Partial | Property registration, public infrastructure approval, yearly MEAS audit |
+| 8 | Governance | Partial | Property registration, public infrastructure approval, yearly MERIT audit |
 | 9 | Environment | No | Pollution diffusion, recovery, infrastructure maintenance, externality processing |
 | 10 | Risk | Partial | Deterministic probability check → GM adjudicates triggered risks → cascades |
 | 11 | Events | **Sonnet/Opus** | GM: research, novel actions, world events (Sonnet), yearly coherence audit (Opus) |
@@ -339,7 +339,7 @@ java -jar build/libs/measim-0.1.0-all.jar --visualize --quick --config config/de
 # Headless (console output + CSV metrics, no UI)
 java -jar build/libs/measim-0.1.0-all.jar --config config/default.yaml
 
-# Comparison mode (MEAS vs baseline capitalism)
+# Comparison mode (MERIT vs baseline capitalism)
 java -jar build/libs/measim-0.1.0-all.jar --compare --config config/default.yaml
 ```
 
@@ -351,7 +351,7 @@ On Windows with Java 21 not on PATH:
 ### Simulation Modes
 
 - **Player Mode**: Play as one of the agents. Enable in the launcher, choose your archetype. Action buttons with form dialogs (Move, Claim Land, Trade, Build, Offer Job, Buy Robot) plus a chat interface for messaging agents and giving natural language commands to the GM ("I want to build a dirt pathway, budget 200"). Multiple actions per turn. The simulation pauses on your turn while all other agents continue with LLM.
-- **Pure Capitalism Mode**: Toggle MEAS off for pure capitalism comparison — no scoring, no UBI, no extraction royalties, no redistribution. Credits vanish on property purchases instead of funding UBI.
+- **Pure Capitalism Mode**: Toggle MERIT off for pure capitalism comparison — no scoring, no UBI, no extraction royalties, no redistribution. Credits vanish on property purchases instead of funding UBI.
 - **UBI Breakdown Visibility**: Agents receive a memory entry each UBI distribution showing: amount received, pool size, eligible count, and funding sources.
 
 ### LLM Configuration
@@ -404,7 +404,7 @@ This is the emergent progression:
 3. **An agent might invent a message board** — requiring basic tech and materials. Communication range increases for that tile.
 4. **Eventually**: telecommunications, roads, logistics networks — all expanding range and capability. But only if agents build them and the tech tree supports them.
 
-None of these are guaranteed. They're possibilities that emerge (or don't) from agent behavior. If no one builds a marketplace, there is no marketplace. If no one builds roads, trade stays local. The simulation tests whether MEAS incentivizes the creation of these systems.
+None of these are guaranteed. They're possibilities that emerge (or don't) from agent behavior. If no one builds a marketplace, there is no marketplace. If no one builds roads, trade stays local. The simulation tests whether MERIT incentivizes the creation of these systems.
 
 **The GM's job at every evaluation**: "Does the tech exist for this? Does the infrastructure exist? Is this physically possible given what's been built?" The GM refuses proposals that skip technological prerequisites — no online exchange without internet infrastructure, no phone communication without telecommunications.
 
@@ -448,7 +448,7 @@ The reserve will NOT cover 100% of any resource — agents must participate in t
 
 We're building toward a world where human labor is optional. That's not a dystopia — it's potentially a utopia, if the economic system distributes the gains rather than concentrating them. But the current system won't do that. It's architecturally incapable of it.
 
-MEAS is a proposal. MeaSim is the test. If the simulation shows that MEAS produces broad welfare, functional entrepreneurship, environmental sustainability, and resistance to gaming — under adversarial conditions with agents specifically designed to break it — then it's worth taking seriously.
+MERIT is a proposal. MeritSim is the test. If the simulation shows that MERIT produces broad welfare, functional entrepreneurship, environmental sustainability, and resistance to gaming — under adversarial conditions with agents specifically designed to break it — then it's worth taking seriously.
 
 If it doesn't, we'll see exactly where it fails and fix the formulas.
 
@@ -462,7 +462,7 @@ All core systems built, wired, and compiling:
 
 - **World**: Hex grid, Perlin noise terrain, 7 terrain types, resource placement, settlement zones, tile history tracking
 - **Economy**: Realistic credit flow (no fake injection), proximity-based agent-to-agent trade with LLM-driven negotiation (no built-in exchange — marketplaces emerge from agent-created services), production chains, consumption needs
-- **MEAS Scoring**: All 5 axes (EF, CC, LD, RC, EP) with exact spec formulas, deterministic, auditable
+- **MERIT Scoring**: All 5 axes (EF, CC, LD, RC, EP) with exact spec formulas, deterministic, auditable
 - **Agents**: 18 archetypes (Worker 15%, Entrepreneur 6%, Free Rider 7%, etc.), memory streams, risk-adjusted utility decisions, perceived risk model, experience tracking per domain
 - **LLM Integration**: Claude API over HTTP/1.1 with a dedicated 100-thread pool (handles 100+ concurrent requests without thread starvation), two-tier decisions (deterministic + LLM escalation), concurrent batching, retry logic (3 retries with backoff), cost tracking
 - **Game Master**: Full DM — research, infrastructure evaluation (agent proposes/GM evaluates), novel actions for all archetypes, free-form action resolution, spontaneous world events, tile-specific coherence corrections. Multi-turn tool conversations with world-inspection tools (inspect_tile, inspect_agent, query_market, etc.) ground every decision in actual world state. Refuses out-of-jurisdiction requests (no trading, no market participation). Enforces tech tree prerequisites. Information boundaries. All reasoning observable.
@@ -498,9 +498,9 @@ A full 50-year simulation with 200 agents and multi-round conversations costs ap
 
 If you believe economic systems should be engineered, not endured — here's how to help:
 
-1. **Run simulations.** Run both MEAS-enabled and pure capitalism (MEAS off) with the same seed. Compare Gini coefficients, satisfaction, environmental health, entrepreneurship rates.
+1. **Run simulations.** Run both MERIT-enabled and pure capitalism (MERIT off) with the same seed. Compare Gini coefficients, satisfaction, environmental health, entrepreneurship rates.
 2. **Identify flaws.** When agents exploit loopholes, when UBI is insufficient, when the scoring formulas produce perverse incentives — document what you find.
-3. **Fix the formulas.** The MEAS scoring functions are in `ScoringServiceImpl.java`. Adjust the curves, change the thresholds, test again. The simulation exists to find bugs in the economic design.
+3. **Fix the formulas.** The MERIT scoring functions are in `ScoringServiceImpl.java`. Adjust the curves, change the thresholds, test again. The simulation exists to find bugs in the economic design.
 4. **Play as an agent.** Use Player Mode to experience the system from inside. Does it feel fair? Can you succeed as a Worker? Can you game it as an Exploiter?
 5. **Share your insights.** Email me at **h.zante2011@gmail.com** with simulation results, formula improvements, or systemic flaws you've identified.
 

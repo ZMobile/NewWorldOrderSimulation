@@ -145,7 +145,7 @@ public class RiskServiceImpl implements RiskService {
         }
         try {
             String systemPrompt = """
-                    You are the Game Master (physics engine) adjudicating a triggered risk event in MeaSim.
+                    You are the Game Master (physics engine) adjudicating a triggered risk event in MeritSim.
                     Determine SPECIFIC consequences. Be realistic and proportional to severity.
                     Consider: cascading effects to nearby entities, environmental byproducts released,
                     impact on the entity owner's credits and operations, and whether connected

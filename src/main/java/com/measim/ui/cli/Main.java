@@ -51,7 +51,7 @@ public class Main {
 
     private static void launchWithUI(String[] args) {
         LauncherWindow.setOnLaunch(settings -> {
-            System.out.printf("Launching: %d agents, %dx%d world, %d years, MEAS=%s, LLM=%s%n",
+            System.out.printf("Launching: %d agents, %dx%d world, %d years, MERIT=%s, LLM=%s%n",
                     settings.agentCount(), settings.worldWidth(), settings.worldHeight(),
                     settings.totalYears(), settings.measEnabled(), settings.llmEnabled());
 

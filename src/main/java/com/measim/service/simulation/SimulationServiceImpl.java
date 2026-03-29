@@ -154,7 +154,7 @@ public class SimulationServiceImpl implements SimulationService {
         List<TickPhase> orderedPhases = phases.stream()
                 .sorted(Comparator.comparingInt(TickPhase::order)).toList();
 
-        System.out.printf("Starting MeaSim: %d agents, %dx%d world, %d ticks (%d years), MEAS=%s%n",
+        System.out.printf("Starting MeritSim: %d agents, %dx%d world, %d ticks (%d years), MERIT=%s%n",
                 agentDao.getAgentCount(), config.worldWidth(), config.worldHeight(),
                 totalTicks, config.totalYears(), config.measEnabled() ? "ON" : "OFF");
 
@@ -222,12 +222,12 @@ public class SimulationServiceImpl implements SimulationService {
 
     @Override
     public void runComparison() {
-        System.out.println("=== Running MEAS scenario ===");
+        System.out.println("=== Running MERIT scenario ===");
         run();
-        comparisonService.recordScenario("MEAS", metricsService.getHistory());
-        // Note: full comparison requires a second run with MEAS disabled (same seed)
-        // which needs a fresh injector. For now, record the MEAS run.
-        System.out.println("=== MEAS run recorded. Run again with meas.enabled=false for baseline. ===");
+        comparisonService.recordScenario("MERIT", metricsService.getHistory());
+        // Note: full comparison requires a second run with MERIT disabled (same seed)
+        // which needs a fresh injector. For now, record the MERIT run.
+        System.out.println("=== MERIT run recorded. Run again with meas.enabled=false for baseline. ===");
     }
 
     @Override

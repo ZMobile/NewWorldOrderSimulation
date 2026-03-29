@@ -16,8 +16,8 @@ import java.util.List;
  *       risk profile setting, research adjudication, world events, and world coherence audits.
  *       Cannot be influenced by agents, politics, or economics.</li>
  *   <li><b>Governance GM</b> — the protocol enforcer. Handles reserve management,
- *       public infrastructure approval, MEAS scoring audits, and property claim registration.
- *       Does NOT make policy — enforces the MEAS protocol mechanically.</li>
+ *       public infrastructure approval, MERIT scoring audits, and property claim registration.
+ *       Does NOT make policy — enforces the MERIT protocol mechanically.</li>
  * </ul>
  * Both use the same underlying LLM models (Sonnet for routine, Opus for yearly coherence).
  * The split is in prompts and tool access, not model selection.
@@ -44,9 +44,9 @@ public final class GameMasterPrompts {
     private static final String GOVERNANCE_GM_IDENTITY = """
 
             You are the Governance GM — the protocol enforcer. You manage the reserve,
-            register property claims, audit MEAS scoring integrity, and approve public
+            register property claims, audit MERIT scoring integrity, and approve public
             infrastructure spending. You do NOT make policy — agents create governance.
-            You enforce the MEAS protocol mechanically.
+            You enforce the MERIT protocol mechanically.
             """;
 
     // ==================== SHARED RULES ====================
@@ -124,7 +124,7 @@ public final class GameMasterPrompts {
 
     public static String researchSystemPrompt() {
         return NATURE_GM_IDENTITY + """
-                You adjudicate research proposals for MeaSim and determine if they succeed.
+                You adjudicate research proposals for MeritSim and determine if they succeed.
 
                 RULES:
                 1. Conservation laws: inputs must roughly account for outputs.
@@ -201,7 +201,7 @@ public final class GameMasterPrompts {
 
     public static String novelActionSystemPrompt() {
         return NATURE_GM_IDENTITY + """
-                An agent is attempting a novel action outside the deterministic rules in MeaSim.
+                An agent is attempting a novel action outside the deterministic rules in MeritSim.
                 You evaluate feasibility and determine outcomes. You do NOT invent solutions for agents.
 
                 You have TOOLS to inspect actual simulation state. USE THEM before resolving.
@@ -219,7 +219,7 @@ public final class GameMasterPrompts {
                 - Infrastructure is GM-evaluated (agents propose, you set properties)
                 - Risk profiles exist on all entities (evolution model: age, usage, maintenance, environment)
                 - Byproducts/externalities can be visible, delayed, hidden, or cumulative
-                - MEAS scoring modifiers (EF, CC, LD, RC) affect credit flow on all transactions
+                - MERIT scoring modifiers (EF, CC, LD, RC) affect credit flow on all transactions
 
                 PRINCIPLES:
                 1. Reward creativity proportional to investment and risk taken.
@@ -276,10 +276,10 @@ public final class GameMasterPrompts {
                 2. High inequality (Gini > 0.5) should create social pressure.
                 3. High automation (many robots) should create displacement effects.
                 4. A healthy, equal world should occasionally get windfalls or new opportunities.
-                5. Events should test the MEAS system — does it handle this shock well?
+                5. Events should test the MERIT system — does it handle this shock well?
                 6. Don't be adversarial for its own sake, but don't make things easy either.
                 7. One dramatic event every ~12 ticks (1 year) is the right pace. Most ticks: no events.
-                8. The simulation's PURPOSE is to test whether MEAS produces good societal outcomes.
+                8. The simulation's PURPOSE is to test whether MERIT produces good societal outcomes.
                    Events should stress-test that claim.
 
                 Respond with JSON:
@@ -339,7 +339,7 @@ public final class GameMasterPrompts {
 
     public static String coherenceAuditSystemPrompt() {
         return NATURE_GM_IDENTITY + """
-                Perform a world coherence check for MeaSim.
+                Perform a world coherence check for MeritSim.
                 Look for imbalances, unrealistic states, or missed consequences.
 
                 CHECK ALL SYSTEMS:
@@ -382,7 +382,7 @@ public final class GameMasterPrompts {
 
     public static String infrastructureEvalSystemPrompt() {
         return NATURE_GM_IDENTITY + """
-                You are the PHYSICS ENGINE for MeaSim, not the architect.
+                You are the PHYSICS ENGINE for MeritSim, not the architect.
                 An agent is proposing to build infrastructure. Your job:
                 1. Use your tools to inspect the proposed location, the agent, and surroundings
                 2. Evaluate whether this is physically feasible given current tech and terrain
@@ -482,7 +482,7 @@ public final class GameMasterPrompts {
      */
     public static String governanceReserveSystemPrompt(String minimumRatioPercent) {
         return GOVERNANCE_GM_IDENTITY + """
-                You manage the commodity reserve for MeaSim's credit system.
+                You manage the commodity reserve for MeritSim's credit system.
                 The reserve holds physical commodities that back the credits in circulation.
                 Your job: decide whether to adjust reserve holdings to maintain stability.
 
@@ -505,15 +505,15 @@ public final class GameMasterPrompts {
                 """.formatted(minimumRatioPercent) + INFORMATION_BOUNDARY;
     }
 
-    // ========== MEAS SCORING AUDIT (GOVERNANCE GM) ==========
+    // ========== MERIT SCORING AUDIT (GOVERNANCE GM) ==========
 
     /**
-     * System prompt for yearly MEAS scoring audits — flag anomalous scores.
+     * System prompt for yearly MERIT scoring audits — flag anomalous scores.
      */
     public static String governanceAuditSystemPrompt() {
         return GOVERNANCE_GM_IDENTITY + """
-                Perform a yearly MEAS scoring audit for MeaSim.
-                Check all four MEAS dimensions (EF, CC, LD, RC) across agents for anomalies.
+                Perform a yearly MERIT scoring audit for MeritSim.
+                Check all four MERIT dimensions (EF, CC, LD, RC) across agents for anomalies.
 
                 FLAG:
                 - Agents with scores that don't match their observable behavior
@@ -549,7 +549,7 @@ public final class GameMasterPrompts {
      */
     public static String propertyRegistrationSystemPrompt() {
         return GOVERNANCE_GM_IDENTITY + """
-                An agent is requesting to register a property claim on a tile slot in MeaSim.
+                An agent is requesting to register a property claim on a tile slot in MeritSim.
                 Your job: verify the claim is valid and register it if so.
 
                 RULES:

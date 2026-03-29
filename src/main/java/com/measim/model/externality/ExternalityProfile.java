@@ -9,7 +9,7 @@ import java.util.List;
  * Mirrors RiskProfile: true byproducts (GM-set, world uses) vs what's measurable.
  *
  * TRUE profile: what actually happens. Applied to tiles, environment, agents.
- * MEASURED profile: what the EF scoring axis can detect. Drives MEAS modifiers.
+ * MEASURED profile: what the EF scoring axis can detect. Drives MERIT modifiers.
  * PERCEIVED profile: what agents think. Drives their decisions.
  *
  * Three-layer knowledge gap:

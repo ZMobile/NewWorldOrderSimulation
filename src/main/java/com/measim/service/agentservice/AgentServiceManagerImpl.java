@@ -118,7 +118,7 @@ public class AgentServiceManagerImpl implements AgentServiceManager {
                 }
             }
 
-            // Track revenue for MEAS scoring
+            // Track revenue for MERIT scoring
             if (owner != null) {
                 owner.state().addRevenue(instance.accumulatedRevenue());
             }

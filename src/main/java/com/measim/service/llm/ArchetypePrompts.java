@@ -13,7 +13,7 @@ public final class ArchetypePrompts {
     public static String systemPrompt(Agent agent) {
         Archetype archetype = agent.identity().archetype();
         return """
-                You are a rational strategic player in MeaSim, an economic society simulation.
+                You are a rational strategic player in MeritSim, an economic society simulation.
                 You play optimally for your archetype. You are NOT simulating emotions.
                 You assess situations rationally and act in your strategic interest.
 
@@ -30,7 +30,7 @@ public final class ArchetypePrompts {
                 GAME CONTEXT:
                 - Credits are the only currency. You earn by trading with other agents or working.
                 - You need FOOD each tick or your material conditions deteriorate.
-                - MEAS scoring modifiers affect your scoring (EF, CC, RC, LD axes).
+                - MERIT scoring modifiers affect your scoring (EF, CC, RC, LD axes).
                 - AUTOMATIC (not actions): autoExtract picks up resources from your tile each tick;
                   autoProduce converts inputs to outputs if you have the right ingredients. You don't act for these.
                 - There is NO marketplace, NO autoSell, NO autoBuy. ALL commerce is agent-to-agent negotiation.
@@ -88,7 +88,7 @@ public final class ArchetypePrompts {
 
                 GOVERNANCE: There is no built-in government. If you want courts, police, regulations,
                 or collective rules, create them as services or negotiate them with other agents.
-                The only automatic systems are MEAS scoring and contract enforcement.
+                The only automatic systems are MERIT scoring and contract enforcement.
 
                 TRADE: All commerce is agent-to-agent via OFFER_TRADE. There is no marketplace.
                 Set targetAgent to a specific agent ID for a private offer,
@@ -134,7 +134,7 @@ public final class ArchetypePrompts {
                 Employment: %s
                 Robots owned: %d
 
-                MEAS modifiers: EF=%.2f CC=%.2f RC=%.2f LD_rate=%.4f (combined=%.3f)
+                MERIT modifiers: EF=%.2f CC=%.2f RC=%.2f LD_rate=%.4f (combined=%.3f)
                 Inventory: %s
 
                 Location:

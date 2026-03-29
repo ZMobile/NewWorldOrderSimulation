@@ -170,7 +170,7 @@ public class SimulationViewer extends Application {
         });
 
         Scene scene = new Scene(root, 1500, 900);
-        primaryStage.setTitle("MeaSim — New World Order Simulation");
+        primaryStage.setTitle("MeritSim — New World Order Simulation");
         primaryStage.setScene(scene);
         primaryStage.show();
 
