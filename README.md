@@ -40,6 +40,14 @@ Capitalism uses employment as its primary mechanism for getting purchasing power
 
 These aren't future problems. They're happening now, and they'll accelerate.
 
+### This Is Now a Formal Result
+
+In 2026, Falk and Tsoukalas published [*The AI Layoff Trap*](https://arxiv.org/abs/2603.20617v1), proving the collapse mechanism mathematically. Using a competitive task-based model, they show that demand externalities trap rational firms in an automation arms race, displacing workers well beyond what is collectively optimal — even when every firm knows the aggregate outcome hurts them. Individual rationality, collective ruin.
+
+What makes the paper particularly sharp is what it rules out. The authors evaluate the standard menu of remedies — wage adjustments, free entry, capital income taxes, worker equity participation, universal basic income on its own, upskilling, Coasian bargaining — and prove each one **fails to eliminate the excess displacement**. The only mechanism that corrects the externality in their model is a **Pigouvian automation tax**: a direct price on labor displacement, scaled to the social cost it creates.
+
+That is exactly what MERIT's Labor Displacement axis is.
+
 ---
 
 ## The Insight: Economics Is Systems Architecture
@@ -89,6 +97,8 @@ The difference between what the buyer pays and what the seller receives flows in
 ### Layer 3: Universal Basic Income (Funded by Automation)
 
 This is the critical piece. As automation increases, the Labor Displacement axis generates more diversion, which increases UBI payments. **The system automatically scales its safety net to the level of automation without requiring any legislative action.**
+
+This is the Pigouvian automation tax that Falk and Tsoukalas identify as the only escape from the AI Layoff Trap — with one design difference. Their result is that UBI *funded by general taxation* doesn't fix the externality, because it doesn't change the marginal firm decision. MERIT's LD diversion is applied at the source of the displacement (revenue per human employee vs. sector median), so it shifts the automation-vs-labor calculus at the point where the decision is made, then routes the proceeds to the UBI pool. Pigouvian price signal and demand-side redistribution, in one mechanism.
 
 Pre-automation UBI is funded by property claim purchases, extraction royalties on public land, and transaction taxes — all flowing to the UBI pool; UBI distributes yearly. UBI is comfortable, not subsistence. It covers housing, food, healthcare, education. Above UBI, a fully competitive economy operates — you want a mega yacht, you compete. The floor is guaranteed; the ceiling is unlimited.
 
